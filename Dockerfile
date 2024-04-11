@@ -1,0 +1,34 @@
+# Start from Ubuntu 20.04 as the base for the build stage to ensure compatibility
+FROM golang:1.21.0 as builder
+
+WORKDIR /app
+
+# Copy your source code
+COPY . .
+
+# Build your Go application
+RUN CGO_ENABLED=1 GOOS=linux go build -ldflags '-extldflags "-static"' -v -o /fly/bin/start ./cmd/start
+
+COPY ./bin/* /fly/bin/
+
+# Start from Ubuntu 20.04 for the runtime stage
+FROM ubuntu:20.04
+
+# Avoid debconf warnings during the build
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install runtime dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends libsqlite3-dev sqlite3 cron curl ca-certificates && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Copy the built binary from the builder stage
+COPY --from=builder /fly/bin/* /usr/local/bin/
+
+
+# Optional: If you have additional binaries or scripts to copy
+# COPY --from=builder /app/bin/* /usr/local/bin/
+
+# Set the CMD to your application
+CMD ["start"]

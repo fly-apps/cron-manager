@@ -1,0 +1,7 @@
+#!/bin/bash
+
+job_id=$1
+
+curl -s -S -X POST http://localhost:5500/jobs/process -H "Content-Type: application/json" -d "{
+  \"id\": $job_id
+}"
