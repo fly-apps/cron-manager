@@ -107,7 +107,6 @@ func processJob(ctx context.Context, store *cron.Store, req processJobRequest) e
 	}
 
 	log.Printf("[INFO] Job %d exited with code %d - stdout\n", job.ID, resp.ExitCode, resp.StdOut)
-
 	// Complete the job
 	if err := store.CompleteJob(job.ID, int(resp.ExitCode), resp.StdOut); err != nil {
 		return fmt.Errorf("failed to complete job: %w", err)

@@ -128,6 +128,44 @@ func (s Store) ListCronJobs() ([]CronJob, error) {
 	return cronJobs, nil
 }
 
+func (s Store) ListJobs(cronJobID string, limit int) ([]Job, error) {
+	query := fmt.Sprintf("SELECT id, status, machine_id, exit_code, stdout, stderr, created_at, updated_at, finished_at FROM jobs where cronjob_id = %s ORDER BY id DESC LIMIT %d", cronJobID, limit)
+	rows, err := s.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var jobs []Job
+	for rows.Next() {
+		var id int
+		var createdAt, updatedAt time.Time
+		var exitCode sql.NullInt64
+		var finishedAt sql.NullTime
+		var machineID, stdout, stderr sql.NullString
+
+		var status string
+		if err := rows.Scan(&id, &status, &machineID, &exitCode, &stdout, &stderr, &createdAt, &updatedAt, &finishedAt); err != nil {
+			return nil, err
+		}
+
+		jobs = append(jobs, Job{
+			ID:         id,
+			Status:     status,
+			MachineID:  machineID,
+			ExitCode:   exitCode,
+			Stdout:     stdout,
+			Stderr:     stderr,
+			CreatedAt:  createdAt,
+			UpdatedAt:  updatedAt,
+			FinishedAt: finishedAt,
+		})
+	}
+
+	return jobs, nil
+
+}
+
 func (s Store) CreateCronJob(appName, image, schedule, command, restartPolicy string) error {
 	insertCronJobSQL := `INSERT INTO cronjobs (app_name, image, schedule, command, restart_policy) VALUES (?, ?, ?, ?, ?);`
 	_, err := s.Exec(insertCronJobSQL, appName, image, schedule, command, restartPolicy)
