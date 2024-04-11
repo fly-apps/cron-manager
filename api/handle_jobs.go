@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/fly-apps/cron-manager/internal/cron"
+	"github.com/superfly/fly-go"
 )
 
 type processJobRequest struct {
@@ -44,6 +45,8 @@ func processJob(ctx context.Context, store *cron.Store, req processJobRequest) e
 		return err
 	}
 
+	log.Printf("[INFO] Processing Cronjob %d...\n", req.ID)
+
 	// Create a new job
 	jobID, err := store.CreateJob(cronjob.ID)
 	if err != nil {
@@ -62,6 +65,8 @@ func processJob(ctx context.Context, store *cron.Store, req processJobRequest) e
 		return fmt.Errorf("failed to create client: %w", err)
 	}
 
+	log.Printf("[INFO] Provisioning machine with image %s...\n", cronjob.Image)
+
 	// Provision a new machine to run the job
 	machine, err := client.MachineProvision(ctx, cronjob, job)
 	if err != nil {
@@ -79,10 +84,19 @@ func processJob(ctx context.Context, store *cron.Store, req processJobRequest) e
 	}
 
 	defer func() {
+		log.Printf("[INFO] Cleaning up job %s...\n", job.ID)
 		if err := client.MachineDestroy(ctx, machine); err != nil {
 			log.Printf("[ERROR] Failed to destroy machine %s: %s\n", machine.ID, err)
 		}
 	}()
+
+	log.Printf("[INFO] Waiting for machine to start...\n")
+	// Wait for the machine to start
+	if err := client.WaitForStatus(ctx, machine, fly.MachineStateStarted); err != nil {
+		return fmt.Errorf("failed to wait for machine to start: %w", err)
+	}
+
+	log.Printf("[INFO] Executing command %s on machine %s...\n", cronjob.Command, machine.ID)
 
 	// Execute the job
 	resp, err := client.MachineExec(ctx, cronjob, job, machine)
@@ -91,6 +105,8 @@ func processJob(ctx context.Context, store *cron.Store, req processJobRequest) e
 			log.Printf("[ERROR] Failed to update job job %d: %s\n", job.ID, err)
 		}
 	}
+
+	log.Printf("[INFO] Job %d exited with code %d - stdout\n", job.ID, resp.ExitCode, resp.StdOut)
 
 	// Complete the job
 	if err := store.CompleteJob(job.ID, int(resp.ExitCode), resp.StdOut); err != nil {

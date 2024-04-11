@@ -29,7 +29,6 @@ func main() {
 		panic(fmt.Errorf("failed to setup db: %w", err))
 	}
 
-	log.Printf("Syncing Cronjob State with Crontab...")
 	if err := cron.InitializeCron(store); err != nil {
 		panic(fmt.Errorf("failed to sync crontab: %w", err))
 	}

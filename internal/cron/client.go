@@ -3,7 +3,6 @@ package cron
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"time"
 
@@ -66,13 +65,15 @@ func (c *Client) MachineProvision(ctx context.Context, cronjob *CronJob, job *Jo
 		return machine, fmt.Errorf("failed to update job machine: %w", err)
 	}
 
-	log.Printf("Machine %s created under App %s", machine.ID, cronjob.AppName)
+	return machine, nil
+}
 
-	if err := c.flapsClient.Wait(ctx, machine, fly.MachineStateStarted, 30*time.Second); err != nil {
-		return machine, fmt.Errorf("failed to wait for machine to start: %w", err)
+func (c *Client) WaitForStatus(ctx context.Context, machine *fly.Machine, targetStatus string) error {
+	if err := c.flapsClient.Wait(ctx, machine, targetStatus, 30*time.Second); err != nil {
+		return fmt.Errorf("failed to wait for machine to start: %w", err)
 	}
 
-	return machine, nil
+	return nil
 }
 
 func (c *Client) MachineDestroy(ctx context.Context, machine *fly.Machine) error {
