@@ -3,7 +3,6 @@
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'cron-manager-misty-surf-4352'
 primary_region = 'ord'
 
 [build]

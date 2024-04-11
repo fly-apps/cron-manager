@@ -13,6 +13,7 @@ require (
 require (
 	github.com/Khan/genqlient v0.6.0 // indirect
 	github.com/PuerkitoBio/rehttp v1.4.0 // indirect
+	github.com/adhocore/gronx v1.8.1
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-logr/logr v1.4.1 // indirect

@@ -5,12 +5,12 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/adhocore/gronx"
 	"github.com/fly-apps/cron-manager/internal/cron"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 )
 
-// main is the entry point for the application.
 func main() {
 	var rootCmd = &cobra.Command{Use: "cm"}
 	var schedulesCmd = &cobra.Command{Use: "schedules"}
@@ -19,6 +19,9 @@ func main() {
 	rootCmd.AddCommand(jobsCmd)
 
 	schedulesCmd.AddCommand(listCmd)
+	schedulesCmd.AddCommand(registerScheduleCmd)
+	schedulesCmd.AddCommand(unregisterScheduleCmd)
+
 	jobsCmd.AddCommand(listJobsCmd)
 
 	if err := rootCmd.Execute(); err != nil {
@@ -28,6 +31,116 @@ func main() {
 }
 
 func init() {
+	registerScheduleCmd.Flags().StringP("app-name", "a", "", "The name of the app the job should run against")
+	registerScheduleCmd.Flags().StringP("image", "i", "", "The image the Machine will run")
+	registerScheduleCmd.Flags().StringP("schedule", "s", "", "The schedule to the job will run on. (Uses the cron format)")
+	registerScheduleCmd.Flags().StringP("restart-policy", "r", "", "The restart policy for the Machine. (no, always, on-failure)")
+	registerScheduleCmd.Flags().StringP("command", "c", "", "The command to run on the Machine")
+	registerScheduleCmd.MarkFlagRequired("app-name")
+	registerScheduleCmd.MarkFlagRequired("image")
+	registerScheduleCmd.MarkFlagRequired("schedule")
+	registerScheduleCmd.MarkFlagRequired("command")
+}
+
+var registerScheduleCmd = &cobra.Command{
+	Use:   "register -app-name <app-name> -image <image> -schedule <schedule> -restart-policy <restart-policy> -command <command>",
+	Short: "Register a new schedule",
+	Long:  `Register a new schedule`,
+	Args:  cobra.NoArgs,
+
+	Run: func(cmd *cobra.Command, args []string) {
+		store, err := cron.NewStore()
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		appName, err := cmd.Flags().GetString("app-name")
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		image, err := cmd.Flags().GetString("image")
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		schedule, err := cmd.Flags().GetString("schedule")
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		gron := gronx.New()
+		if gron.IsValid(schedule) == false {
+			fmt.Println("Invalid schedule")
+			os.Exit(1)
+		}
+
+		restartPolicy, err := cmd.Flags().GetString("restart-policy")
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		if restartPolicy == "" {
+			restartPolicy = "no"
+		}
+
+		if restartPolicy != "no" && restartPolicy != "always" && restartPolicy != "on-failure" {
+			fmt.Println("Invalid restart policy. Must be one of: no, always, on-failure")
+			os.Exit(1)
+		}
+
+		command, err := cmd.Flags().GetString("command")
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		if err := store.CreateCronJob(appName, image, schedule, command, restartPolicy); err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		if err := cron.SyncCrontab(store); err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		fmt.Println("Cronjob registered successfully")
+	},
+}
+
+var unregisterScheduleCmd = &cobra.Command{
+	Use:   "unregister <cronjob id>",
+	Short: "Unregisters an existing schedule",
+	Long:  `Unregisters an existing schedule`,
+	Args:  cobra.ExactArgs(1),
+
+	Run: func(cmd *cobra.Command, args []string) {
+		cronJobID := args[0]
+
+		store, err := cron.NewStore()
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		if err := store.DeleteCronJob(cronJobID); err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		if err := cron.SyncCrontab(store); err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		fmt.Println("Cronjob successfully unregistered")
+	},
 }
 
 var listCmd = &cobra.Command{
@@ -50,7 +163,7 @@ var listCmd = &cobra.Command{
 		}
 
 		table := tablewriter.NewWriter(os.Stdout)
-		table.SetHeader([]string{"ID", "Image", "Schedule", "Restart Policy", "Command"})
+		table.SetHeader([]string{"ID", "Target App", "Image", "Schedule", "Restart Policy", "Command"})
 
 		// Set table alignment, borders, padding, etc. as needed
 		table.SetAlignment(tablewriter.ALIGN_LEFT)
@@ -65,6 +178,7 @@ var listCmd = &cobra.Command{
 		for _, cj := range cronjobs {
 			table.Append([]string{
 				strconv.Itoa(cj.ID),
+				fmt.Sprint(cj.AppName),
 				fmt.Sprint(cj.Image),
 				fmt.Sprint(cj.Schedule),
 				fmt.Sprint(cj.RestartPolicy),

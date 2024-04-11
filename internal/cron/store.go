@@ -172,6 +172,19 @@ func (s Store) CreateCronJob(appName, image, schedule, command, restartPolicy st
 	return err
 }
 
+func (s Store) DeleteCronJob(id string) error {
+	deleteCronJobSQL := `DELETE FROM cronjobs WHERE id = ?;`
+	_, err := s.Exec(deleteCronJobSQL, id)
+	if err != nil {
+		return fmt.Errorf("error deleting cronjob: %w", err)
+	}
+
+	// Delete all jobs associated with the cronjob
+	deleteJobsSQL := `DELETE FROM jobs WHERE cronjob_id = ?;`
+	_, err = s.Exec(deleteJobsSQL, id)
+	return err
+}
+
 func (s Store) CreateJob(cronjobID int) (int, error) {
 	insertJobSQL := `INSERT INTO jobs (cronjob_id, status, created_at, updated_at) VALUES (?, ?, ?, ?);`
 
