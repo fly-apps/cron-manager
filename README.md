@@ -46,7 +46,7 @@ cm schedules register \
   --command 'uptime'  
 ```
 
-## Viewing Registered Schedules
+## Viewing Schedules
 To view your registered schedules, you can use the `cm schedules list` command.
 
 ```bash 
@@ -60,17 +60,15 @@ cm schedules list
 
 ## Unregistering Schedules
 In the event you want to remove a registered schedule, you can simply run the `unregister` while specifying the associated schedule id.
-```
+```bash
 cm schedules unregister 3
 ```
 
-## View Scheduled Jobs
-Each job execution is recorded within a local sqlite.  To view the job history of a given schedule, run the following command:
+## Viewing Scheduled Jobs
+Each job execution is recorded within a local sqlite.  To view the job history of a specific schedule, run the following command:
 
-```
-cm jobs view 3
-
-oot@784e46ea9d6258:/# cm jobs list 3
+```bash
+cm jobs list 3
 |----|-----------|-----------|-------------------------|-------------------------|-------------------------|
 | ID | STATUS    | EXIT CODE | CREATED AT              | UPDATED AT              | FINISHED AT             |
 |----|-----------|-----------|-------------------------|-------------------------|-------------------------|
