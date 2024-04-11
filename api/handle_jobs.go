@@ -84,7 +84,7 @@ func processJob(ctx context.Context, store *cron.Store, req processJobRequest) e
 	}
 
 	defer func() {
-		log.Printf("[INFO] Cleaning up job %s...\n", job.ID)
+		log.Printf("[INFO] Cleaning up job %d...\n", job.ID)
 		if err := client.MachineDestroy(ctx, machine); err != nil {
 			log.Printf("[ERROR] Failed to destroy machine %s: %s\n", machine.ID, err)
 		}
