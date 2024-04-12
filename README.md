@@ -59,7 +59,7 @@ cm schedules list
 ```
 
 ## Unregistering Schedules
-In the event you want to remove a registered schedule, you can simply run the `unregister` while specifying the associated schedule id.
+In the event you would like to remove a specific schedule, you can simply run the `unregister` command while specifying the target schedule id.
 ```bash
 cm schedules unregister 3
 ```
