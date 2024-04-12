@@ -128,6 +128,32 @@ func (s Store) ListCronJobs() ([]CronJob, error) {
 	return cronJobs, nil
 }
 
+func (s Store) FindJob(jobID string) (*Job, error) {
+	var id int
+	var status string
+	var createdAt, updatedAt time.Time
+	var exitCode sql.NullInt64
+	var finishedAt sql.NullTime
+	var machineID, stdout, stderr sql.NullString
+
+	row := s.QueryRow("SELECT id, status, machine_id, exit_code, stdout, stderr, created_at, updated_at, finished_at FROM jobs where id = ?", jobID)
+	if err := row.Scan(&id, &status, &machineID, &exitCode, &stdout, &stderr, &createdAt, &updatedAt, &finishedAt); err != nil {
+		return &Job{}, err
+	}
+
+	return &Job{
+		ID:         id,
+		Status:     status,
+		MachineID:  machineID,
+		ExitCode:   exitCode,
+		Stdout:     stdout,
+		Stderr:     stderr,
+		CreatedAt:  createdAt,
+		UpdatedAt:  updatedAt,
+		FinishedAt: finishedAt,
+	}, nil
+}
+
 func (s Store) ListJobs(cronJobID string, limit int) ([]Job, error) {
 	query := fmt.Sprintf("SELECT id, status, machine_id, exit_code, stdout, stderr, created_at, updated_at, finished_at FROM jobs where cronjob_id = %s ORDER BY id DESC LIMIT %d", cronJobID, limit)
 	rows, err := s.Query(query)
@@ -200,31 +226,6 @@ func (s Store) CreateJob(cronjobID int) (int, error) {
 	}
 
 	return int(id), nil
-}
-
-func (s Store) FindJob(id int) (*Job, error) {
-	var cronJobID int
-	var status string
-	var createdAt, updatedAt time.Time
-	var machineID, stdout, stderr sql.NullString
-	var finishedAt sql.NullTime
-
-	row := s.QueryRow("SELECT cronjob_id, machine_id, status, stdout, stderr, created_at, updated_at, finished_at FROM jobs WHERE id = ?", id)
-	if err := row.Scan(&cronJobID, &machineID, &status, &stdout, &stderr, &createdAt, &updatedAt, &finishedAt); err != nil {
-		return &Job{}, err
-	}
-
-	return &Job{
-		ID:         id,
-		CronJobID:  cronJobID,
-		MachineID:  machineID,
-		Status:     status,
-		Stdout:     stdout,
-		Stderr:     stderr,
-		CreatedAt:  createdAt,
-		UpdatedAt:  updatedAt,
-		FinishedAt: finishedAt,
-	}, nil
 }
 
 func (s Store) UpdateJobStatus(id int, status string) error {

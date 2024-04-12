@@ -1,11 +1,16 @@
-# fly.toml app configuration file generated for cron-manager-misty-surf-4352 on 2024-04-10T18:13:47-05:00
+# fly.toml app configuration file generated for cron-manager on 2024-04-11T14:24:13-05:00
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
+app = 'cron-manager'
 primary_region = 'ord'
 
 [build]
+
+[[mounts]]
+  source = 'data'
+  destination = '/data'
 
 [http_service]
   internal_port = 8080
@@ -19,7 +24,3 @@ primary_region = 'ord'
   memory = '1gb'
   cpu_kind = 'shared'
   cpus = 1
-
-[[mounts]]
-  destination = "/data"
-  source = "data"

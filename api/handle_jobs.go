@@ -53,16 +53,23 @@ func processJob(ctx context.Context, store *cron.Store, req processJobRequest) e
 		return fmt.Errorf("failed to create job: %w", err)
 	}
 
+	failJob := func(err error) error {
+		if err := store.FailJob(jobID, 1, err.Error()); err != nil {
+			log.Printf("[ERROR] Failed to fail job %d: %s\n", jobID, err)
+		}
+		return err
+	}
+
 	// TODO - Consider coupling this with the above transaction
-	job, err := store.FindJob(jobID)
+	job, err := store.FindJob(fmt.Sprint(jobID))
 	if err != nil {
-		return fmt.Errorf("failed to find job: %w", err)
+		return failJob(fmt.Errorf("failed to find job: %w", err))
 	}
 
 	// Initialize client
 	client, err := cron.NewClient(ctx, cronjob.AppName, store)
 	if err != nil {
-		return fmt.Errorf("failed to create client: %w", err)
+		return failJob(fmt.Errorf("failed to create client: %w", err))
 	}
 
 	log.Printf("[INFO] Provisioning machine with image %s...\n", cronjob.Image)
@@ -76,13 +83,10 @@ func processJob(ctx context.Context, store *cron.Store, req processJobRequest) e
 			}
 		}
 
-		if err := store.FailJob(job.ID, 1, err.Error()); err != nil {
-			log.Printf("[ERROR] Failed to fail job %d: %s\n", job.ID, err)
-		}
-
-		return fmt.Errorf("failed to provision machine: %w", err)
+		return failJob(fmt.Errorf("failed to provision machine: %w", err))
 	}
 
+	// Ensure the machine gets torn down on exit
 	defer func() {
 		log.Printf("[INFO] Cleaning up job %d...\n", job.ID)
 		if err := client.MachineDestroy(ctx, machine); err != nil {
@@ -93,7 +97,7 @@ func processJob(ctx context.Context, store *cron.Store, req processJobRequest) e
 	log.Printf("[INFO] Waiting for machine to start...\n")
 	// Wait for the machine to start
 	if err := client.WaitForStatus(ctx, machine, fly.MachineStateStarted); err != nil {
-		return fmt.Errorf("failed to wait for machine to start: %w", err)
+		return failJob(fmt.Errorf("failed to wait for machine to start: %w", err))
 	}
 
 	log.Printf("[INFO] Executing command %s on machine %s...\n", cronjob.Command, machine.ID)
@@ -101,15 +105,20 @@ func processJob(ctx context.Context, store *cron.Store, req processJobRequest) e
 	// Execute the job
 	resp, err := client.MachineExec(ctx, cronjob, job, machine)
 	if err != nil {
-		if err := store.FailJob(job.ID, int(resp.ExitCode), err.Error()); err != nil {
-			log.Printf("[ERROR] Failed to update job job %d: %s\n", job.ID, err)
-		}
+		return failJob(fmt.Errorf("failed to execute job: %w", err))
 	}
 
-	log.Printf("[INFO] Job %d exited with code %d - stdout\n", job.ID, resp.ExitCode, resp.StdOut)
+	// There's a bug in the exec code that prevents the proper exit code from getting picked up.
+	// For now, if stderr exists we'll assume the job failed.
+	if resp.StdErr != "" {
+		log.Printf("[ERROR] Job %d failed with stderr %s\n", job.ID, resp.StdErr)
+		return failJob(fmt.Errorf("%s", resp.StdErr))
+	}
+
+	log.Printf("[INFO] Job %d exited with code %d - stdout %s - stderr %s\n", job.ID, resp.ExitCode, resp.StdOut, resp.StdErr)
 	// Complete the job
 	if err := store.CompleteJob(job.ID, int(resp.ExitCode), resp.StdOut); err != nil {
-		return fmt.Errorf("failed to complete job: %w", err)
+		log.Printf("[ERROR] Failed to complete job %d: %s\n", job.ID, err)
 	}
 
 	log.Printf("[INFO] Job %d completed successfully!\n", job.ID)

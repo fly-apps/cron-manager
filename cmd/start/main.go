@@ -19,7 +19,6 @@ func main() {
 		}
 	}
 
-	log.Printf("Configuring Cronjob State store...")
 	store, err := cron.NewStore()
 	if err != nil {
 		panic(fmt.Errorf("failed to create store: %w", err))
@@ -33,7 +32,6 @@ func main() {
 		panic(fmt.Errorf("failed to sync crontab: %w", err))
 	}
 
-	log.Printf("Starting HTTP server on port %v...", api.Port)
 	if err := api.StartHttpServer(); err != nil {
 		panic(fmt.Errorf("failed to start http server: %w", err))
 	}

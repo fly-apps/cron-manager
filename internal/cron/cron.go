@@ -36,17 +36,12 @@ func SyncCrontab(store *Store) error {
 		return fmt.Errorf("failed to list cronjobs: %w", err)
 	}
 
-	if len(cronjobs) == 0 {
-		log.Printf("[INFO] No cronjobs to sync\n")
-		return nil
-	}
-
 	file, err := os.Create(cronFilePath)
 	if err != nil {
 		return fmt.Errorf("failed to open crontab file: %w", err)
 	}
-
 	defer file.Close()
+
 	for _, cronjob := range cronjobs {
 		entry := fmt.Sprintf("%s %s %d >> %s 2>&1\n", cronjob.Schedule, executeCommand, cronjob.ID, logFilePath)
 		file.WriteString(entry)

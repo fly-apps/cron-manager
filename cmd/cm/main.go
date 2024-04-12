@@ -23,6 +23,7 @@ func main() {
 	schedulesCmd.AddCommand(unregisterScheduleCmd)
 
 	jobsCmd.AddCommand(listJobsCmd)
+	jobsCmd.AddCommand(showJobCmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -212,7 +213,7 @@ var listJobsCmd = &cobra.Command{
 		}
 
 		table := tablewriter.NewWriter(os.Stdout)
-		table.SetHeader([]string{"ID", "Status", "Exit Code", "Created At", "Updated At", "Finished At"})
+		table.SetHeader([]string{"ID", "Machine ID", "Status", "Exit Code", "Created At", "Updated At", "Finished At"})
 
 		// Set table alignment, borders, padding, etc. as needed
 		table.SetAlignment(tablewriter.ALIGN_LEFT)
@@ -236,6 +237,7 @@ var listJobsCmd = &cobra.Command{
 
 			table.Append([]string{
 				strconv.Itoa(j.ID),
+				j.MachineID.String,
 				fmt.Sprint(j.Status),
 				strconv.Itoa(int(j.ExitCode.Int64)),
 				created,
@@ -245,5 +247,77 @@ var listJobsCmd = &cobra.Command{
 		}
 
 		table.Render()
+	},
+}
+
+var showJobCmd = &cobra.Command{
+	Use:   "show <job id>",
+	Short: "Show job details",
+	Long:  `Show job details`,
+	Args:  cobra.ExactArgs(1),
+
+	Run: func(cmd *cobra.Command, args []string) {
+		jobID := args[0]
+
+		store, err := cron.NewStore()
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		job, err := store.FindJob(jobID)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		table := tablewriter.NewWriter(os.Stdout)
+		table.SetBorder(false)
+		table.SetAutoWrapText(false)
+		table.SetColumnSeparator("=")
+		table.SetAlignment(tablewriter.ALIGN_LEFT)
+		table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
+
+		var finishedAt string
+		if job.FinishedAt.Valid {
+			finishedAt = job.FinishedAt.Time.Format("2006-01-02 15:04:05 UTC")
+		} else {
+			finishedAt = ""
+		}
+
+		rows := [][]string{
+			{
+				strconv.Itoa(job.ID),
+				job.Status,
+				job.MachineID.String,
+				strconv.Itoa(int(job.ExitCode.Int64)),
+				job.CreatedAt.Format("2006-01-02 15:04:05 UTC"),
+				job.UpdatedAt.Format("2006-01-02 15:04:05 UTC"),
+				finishedAt,
+				job.Stdout.String,
+				job.Stderr.String,
+			},
+		}
+
+		cols := []string{
+			"ID",
+			"Status",
+			"Machine ID",
+			"Exit Code",
+			"Created At",
+			"Updated At",
+			"Finished At",
+			"Stdout",
+			"Stderr",
+		}
+
+		fmt.Println("Job Details")
+
+		for _, row := range rows {
+			for i, col := range cols {
+				table.Append([]string{col, row[i]})
+			}
+			table.Render()
+		}
 	},
 }
