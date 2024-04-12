@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/fly-apps/cron-manager/internal/cron"
+	"github.com/sirupsen/logrus"
 	"github.com/superfly/fly-go"
 )
 
@@ -16,9 +16,11 @@ type processJobRequest struct {
 }
 
 func handleJobProcess(w http.ResponseWriter, r *http.Request) {
+	log := r.Context().Value(loggerKey).(*logrus.Logger)
+
 	var req processJobRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		log.Printf("[ERROR] Failed to decode job run request: %s\n", err)
+		log.WithError(err).Error("Failed to decode job run request")
 		renderErr(w, err)
 		return
 	}
@@ -26,26 +28,27 @@ func handleJobProcess(w http.ResponseWriter, r *http.Request) {
 
 	store, err := cron.NewStore()
 	if err != nil {
-		log.Printf("[ERROR] Failed to create store: %s\n", err)
+		log.WithError(err).Error("Failed to initialize sqlite")
 		renderErr(w, err)
 		return
 	}
 
-	if err := processJob(r.Context(), store, req); err != nil {
-		log.Printf("[ERROR] Failed to process job: %s\n", err)
+	if err := processJob(r.Context(), log, store, req); err != nil {
+		// log.WithError(err).Error("Failed to process job")
 		renderErr(w, err)
 		return
 	}
 }
 
-func processJob(ctx context.Context, store *cron.Store, req processJobRequest) error {
+func processJob(ctx context.Context, log *logrus.Logger, store *cron.Store, req processJobRequest) error {
 	// Resolve the associated cronjob
 	cronjob, err := store.FindCronJob(req.ID)
 	if err != nil {
 		return err
 	}
 
-	log.Printf("[INFO] Processing Cronjob %d...\n", req.ID)
+	logger := log.WithField("schedule-id", cronjob.ID)
+	logger.Info("processing scheduled task...")
 
 	// Create a new job
 	jobID, err := store.CreateJob(cronjob.ID)
@@ -53,75 +56,81 @@ func processJob(ctx context.Context, store *cron.Store, req processJobRequest) e
 		return fmt.Errorf("failed to create job: %w", err)
 	}
 
-	failJob := func(err error) error {
-		if err := store.FailJob(jobID, 1, err.Error()); err != nil {
-			log.Printf("[ERROR] Failed to fail job %d: %s\n", jobID, err)
+	failJob := func(exitCode int, err error) error {
+		if err := store.FailJob(jobID, exitCode, err.Error()); err != nil {
+			logger.WithError(err).Error("failed to update job status")
 		}
+		logger.WithError(err).Errorf("job failed with exit code %d", exitCode)
 		return err
 	}
 
 	// TODO - Consider coupling this with the above transaction
 	job, err := store.FindJob(fmt.Sprint(jobID))
 	if err != nil {
-		return failJob(fmt.Errorf("failed to find job: %w", err))
+		return failJob(1, fmt.Errorf("failed to find job: %w", err))
 	}
+
+	logger = logger.WithField("job-id", job.ID)
 
 	// Initialize client
 	client, err := cron.NewClient(ctx, cronjob.AppName, store)
 	if err != nil {
-		return failJob(fmt.Errorf("failed to create client: %w", err))
+		return failJob(1, fmt.Errorf("failed to create client: %w", err))
 	}
 
-	log.Printf("[INFO] Provisioning machine with image %s...\n", cronjob.Image)
+	logger.Debugf("provisioning machine with image %s...", cronjob.Image)
 
 	// Provision a new machine to run the job
 	machine, err := client.MachineProvision(ctx, cronjob, job)
 	if err != nil {
 		if machine != nil {
 			if err := client.MachineDestroy(ctx, machine); err != nil {
-				log.Printf("[ERROR] Failed to destroy machine %s: %s\n", machine.ID, err)
+				logger.Warnf("failed to destroy machine %s: %s", machine.ID, err)
 			}
 		}
-
-		return failJob(fmt.Errorf("failed to provision machine: %w", err))
+		return failJob(1, fmt.Errorf("failed to provision machine: %w", err))
 	}
+
+	logger = logger.WithField("machine-id", machine.ID)
 
 	// Ensure the machine gets torn down on exit
 	defer func() {
-		log.Printf("[INFO] Cleaning up job %d...\n", job.ID)
+		logger.Debugf("cleaning up job...")
 		if err := client.MachineDestroy(ctx, machine); err != nil {
-			log.Printf("[ERROR] Failed to destroy machine %s: %s\n", machine.ID, err)
+			logger.WithError(err).Warn("failed to destroy machine")
 		}
 	}()
 
-	log.Printf("[INFO] Waiting for machine to start...\n")
+	logger.Debug("waiting for machine to start...")
+
 	// Wait for the machine to start
 	if err := client.WaitForStatus(ctx, machine, fly.MachineStateStarted); err != nil {
-		return failJob(fmt.Errorf("failed to wait for machine to start: %w", err))
+		return failJob(1, fmt.Errorf("failed to wait for machine to start: %w", err))
 	}
 
-	log.Printf("[INFO] Executing command %s on machine %s...\n", cronjob.Command, machine.ID)
+	logger.Debugf("executing command `%s` against machine...", cronjob.Command)
 
 	// Execute the job
 	resp, err := client.MachineExec(ctx, cronjob, job, machine)
 	if err != nil {
-		return failJob(fmt.Errorf("failed to execute job: %w", err))
+		return failJob(1, fmt.Errorf("failed to execute job: %w", err))
 	}
 
-	// There's a bug in the exec code that prevents the proper exit code from getting picked up.
-	// For now, if stderr exists we'll assume the job failed.
-	if resp.StdErr != "" {
-		log.Printf("[ERROR] Job %d failed with stderr %s\n", job.ID, resp.StdErr)
-		return failJob(fmt.Errorf("%s", resp.StdErr))
+	// Handle failures.
+	switch {
+	case resp.ExitCode != 0:
+		logger.Errorf("job failed with exit code %d", resp.ExitCode)
+		return failJob(int(resp.ExitCode), fmt.Errorf("job failed with exit code %d", resp.ExitCode))
+	case resp.ExitCode == 0 && resp.StdErr != "":
+		logger.Errorf("job failed with stderr %s", resp.StdErr)
+		return failJob(-1, fmt.Errorf("%s", resp.StdErr))
 	}
 
-	log.Printf("[INFO] Job %d exited with code %d - stdout %s - stderr %s\n", job.ID, resp.ExitCode, resp.StdOut, resp.StdErr)
-	// Complete the job
 	if err := store.CompleteJob(job.ID, int(resp.ExitCode), resp.StdOut); err != nil {
-		log.Printf("[ERROR] Failed to complete job %d: %s\n", job.ID, err)
+		logger.WithError(err).Error("failed to set job status to complete")
 	}
 
-	log.Printf("[INFO] Job %d completed successfully!\n", job.ID)
+	logger.Infof("job completed successfully!")
 
 	return nil
 }

@@ -91,7 +91,8 @@ func (c *Client) MachineDestroy(ctx context.Context, machine *fly.Machine) error
 
 func (c *Client) MachineExec(ctx context.Context, cronJob *CronJob, job *Job, machine *fly.Machine) (*fly.MachineExecResponse, error) {
 	execReq := &fly.MachineExecRequest{
-		Cmd: cronJob.Command,
+		Cmd:     cronJob.Command,
+		Timeout: 30,
 	}
 	return c.flapsClient.Exec(ctx, machine.ID, execReq)
 }

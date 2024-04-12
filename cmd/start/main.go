@@ -2,15 +2,28 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/fly-apps/cron-manager/api"
 	"github.com/fly-apps/cron-manager/internal/cron"
+	_ "github.com/mattn/go-sqlite3"
+	"github.com/sirupsen/logrus"
 )
 
 func main() {
-	log.SetFlags(0)
+	var log = logrus.New()
+	log.SetOutput(os.Stdout)
+	log.SetLevel(logrus.InfoLevel)
+
+	// Allow overriding log level via env var
+	logLevel := os.Getenv("LOG_LEVEL")
+	if logLevel != "" {
+		level, err := logrus.ParseLevel(logLevel)
+		if err != nil {
+			panic(fmt.Errorf("failed to parse log level: %w", err))
+		}
+		log.SetLevel(level)
+	}
 
 	requiredPasswords := []string{"FLY_API_TOKEN"}
 	for _, str := range requiredPasswords {
@@ -32,7 +45,7 @@ func main() {
 		panic(fmt.Errorf("failed to sync crontab: %w", err))
 	}
 
-	if err := api.StartHttpServer(); err != nil {
+	if err := api.StartHttpServer(log); err != nil {
 		panic(fmt.Errorf("failed to start http server: %w", err))
 	}
 }
