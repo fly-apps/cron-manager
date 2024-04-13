@@ -43,7 +43,8 @@ cm schedules register \
   --app-name shaun-pg-flex \
   --image 'ghcr.io/livebook-dev/livebook:0.11.4' \
   --schedule '* * * * *' \
-  --command 'uptime'  
+  --command 'uptime' \
+  --region 'ord'
 ```
 
 ## Viewing Schedules
