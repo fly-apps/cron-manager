@@ -38,12 +38,8 @@ func StartHttpServer(logger *logrus.Logger) error {
 
 func Handler(logger *logrus.Logger) http.Handler {
 	r := chi.NewRouter()
-	r.Route("/cronjobs", func(r chi.Router) {
-		r.Post("/create", handleCreateCronJob)
-		r.Post("/sync", handleCronSync)
-	})
 	r.Route("/jobs", func(r chi.Router) {
-		r.Post("/process", WithLogging(handleJobProcess, logger))
+		r.Post("/trigger", WithLogging(handleJobTrigger, logger))
 	})
 
 	return r

@@ -15,23 +15,24 @@ type Store struct {
 }
 
 func (s Store) SetupDB() error {
-	createCronJobsTableSQL := `CREATE TABLE IF NOT EXISTS cronjobs (
+	createSchedulesTableSQL := `CREATE TABLE IF NOT EXISTS schedules (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		app_name TEXT NOT NULL,
 		image TEXT,
 		schedule TEXT NOT NULL,
+		region TEXT NOT NULL,
 		command TEXT NOT NULL,
 		restart_policy TEXT CHECK(restart_policy IN ('no', 'always', 'on-failure')) NOT NULL DEFAULT 'on-failure',
 		UNIQUE(app_name, image)
 	);`
-	_, err := s.Exec(createCronJobsTableSQL)
+	_, err := s.Exec(createSchedulesTableSQL)
 	if err != nil {
 		return err
 	}
 
 	createJobsTableSQL := `CREATE TABLE IF NOT EXISTS jobs (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		cronjob_id INTEGER NOT NULL,
+		schedule_id INTEGER NOT NULL,
 		status TEXT CHECK(status IN ('pending', 'running', 'completed', 'failed')) NOT NULL DEFAULT 'pending',
 		machine_id TEXT,
 		exit_code INTEGER,
@@ -40,7 +41,7 @@ func (s Store) SetupDB() error {
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 		finished_at TIMESTAMP,
-		FOREIGN KEY(cronjob_id) REFERENCES cronjobs(id)
+		FOREIGN KEY(schedule_id) REFERENCES schedules(id)
 	);`
 	_, err = s.Exec(createJobsTableSQL)
 	if err != nil {
@@ -59,18 +60,19 @@ func NewStore() (*Store, error) {
 	return &Store{s}, nil
 }
 
-type CronJob struct {
+type Schedule struct {
 	ID            int    `json:"id"`
 	AppName       string `json:"app_name"`
 	Image         string `json:"image"`
 	Schedule      string `json:"schedule"`
 	Command       string `json:"command"`
+	Region        string `json:"region"`
 	RestartPolicy string `json:"restart_policy"`
 }
 
 type Job struct {
 	ID         int            `json:"id"`
-	CronJobID  int            `json:"cronjob_id"`
+	ScheduleID int            `json:"schedule_id"`
 	Status     string         `json:"status"`
 	Stdout     sql.NullString `json:"stdout"`
 	Stderr     sql.NullString `json:"stderr"`
@@ -81,14 +83,14 @@ type Job struct {
 	FinishedAt sql.NullTime   `json:"finished_at"`
 }
 
-func (s Store) FindCronJob(id int) (*CronJob, error) {
+func (s Store) FindSchedule(id int) (*Schedule, error) {
 	var appName, image, schedule, command, restartPolicy string
-	row := s.QueryRow("SELECT app_name, image, schedule, command, restart_policy FROM cronjobs WHERE id = ?", id)
+	row := s.QueryRow("SELECT app_name, image, schedule, command, restart_policy FROM schedules WHERE id = ?", id)
 	if err := row.Scan(&appName, &image, &schedule, &command, &restartPolicy); err != nil {
-		return &CronJob{}, err
+		return &Schedule{}, err
 	}
 
-	return &CronJob{
+	return &Schedule{
 		ID:            id,
 		AppName:       appName,
 		Image:         image,
@@ -98,32 +100,33 @@ func (s Store) FindCronJob(id int) (*CronJob, error) {
 	}, nil
 }
 
-func (s Store) ListCronJobs() ([]CronJob, error) {
-	rows, err := s.Query("SELECT id, app_name, image, schedule, command, restart_policy FROM cronjobs")
+func (s Store) ListSchedules() ([]Schedule, error) {
+	rows, err := s.Query("SELECT id, app_name, image, schedule, region, command, restart_policy FROM schedules")
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var cronJobs []CronJob
+	var schedules []Schedule
 	for rows.Next() {
 		var id int
-		var appName, image, schedule, command, restartPolicy string
-		if err := rows.Scan(&id, &appName, &image, &schedule, &command, &restartPolicy); err != nil {
+		var appName, region, image, schedule, command, restartPolicy string
+		if err := rows.Scan(&id, &appName, &image, &schedule, &region, &command, &restartPolicy); err != nil {
 			return nil, err
 		}
 
-		cronJobs = append(cronJobs, CronJob{
+		schedules = append(schedules, Schedule{
 			ID:            id,
 			AppName:       appName,
 			Image:         image,
 			Schedule:      schedule,
+			Region:        region,
 			Command:       command,
 			RestartPolicy: restartPolicy,
 		})
 	}
 
-	return cronJobs, nil
+	return schedules, nil
 }
 
 func (s Store) FindJob(jobID string) (*Job, error) {
@@ -152,8 +155,8 @@ func (s Store) FindJob(jobID string) (*Job, error) {
 	}, nil
 }
 
-func (s Store) ListJobs(cronJobID string, limit int) ([]Job, error) {
-	query := fmt.Sprintf("SELECT id, status, machine_id, exit_code, stdout, stderr, created_at, updated_at, finished_at FROM jobs where cronjob_id = %s ORDER BY id DESC LIMIT %d", cronJobID, limit)
+func (s Store) ListJobs(scheduleID string, limit int) ([]Job, error) {
+	query := fmt.Sprintf("SELECT id, status, machine_id, exit_code, stdout, stderr, created_at, updated_at, finished_at FROM jobs where schedule_id = %s ORDER BY id DESC LIMIT %d", scheduleID, limit)
 	rows, err := s.Query(query)
 	if err != nil {
 		return nil, err
@@ -190,29 +193,46 @@ func (s Store) ListJobs(cronJobID string, limit int) ([]Job, error) {
 
 }
 
-func (s Store) CreateCronJob(appName, image, schedule, command, restartPolicy string) error {
-	insertCronJobSQL := `INSERT INTO cronjobs (app_name, image, schedule, command, restart_policy) VALUES (?, ?, ?, ?, ?);`
-	_, err := s.Exec(insertCronJobSQL, appName, image, schedule, command, restartPolicy)
+type CreateScheduleRequest struct {
+	AppName       string `json:"app_name"`
+	Image         string `json:"image"`
+	Schedule      string `json:"schedule"`
+	Command       string `json:"command"`
+	Region        string `json:"region"`
+	RestartPolicy string `json:"restart_policy"`
+}
+
+func (s Store) CreateSchedule(req CreateScheduleRequest) error {
+	insertScheduleSQL := `INSERT INTO schedules (app_name, image, schedule, command, region, restart_policy) VALUES (?, ?, ?, ?, ?, ?);`
+	_, err := s.Exec(insertScheduleSQL,
+		req.AppName,
+		req.Image,
+		req.Schedule,
+		req.Command,
+		req.Region,
+		req.RestartPolicy,
+	)
+
 	return err
 }
 
-func (s Store) DeleteCronJob(id string) error {
-	deleteCronJobSQL := `DELETE FROM cronjobs WHERE id = ?;`
-	_, err := s.Exec(deleteCronJobSQL, id)
+func (s Store) DeleteSchedule(id string) error {
+	deleteScheduleSQL := `DELETE FROM schedules WHERE id = ?;`
+	_, err := s.Exec(deleteScheduleSQL, id)
 	if err != nil {
-		return fmt.Errorf("error deleting cronjob: %w", err)
+		return fmt.Errorf("error deleting schedule: %w", err)
 	}
 
-	// Delete all jobs associated with the cronjob
-	deleteJobsSQL := `DELETE FROM jobs WHERE cronjob_id = ?;`
+	// Delete all jobs associated with the schedule
+	deleteJobsSQL := `DELETE FROM jobs WHERE schedule_id = ?;`
 	_, err = s.Exec(deleteJobsSQL, id)
 	return err
 }
 
-func (s Store) CreateJob(cronjobID int) (int, error) {
-	insertJobSQL := `INSERT INTO jobs (cronjob_id, status, created_at, updated_at) VALUES (?, ?, ?, ?);`
+func (s Store) CreateJob(scheduleID int) (int, error) {
+	insertJobSQL := `INSERT INTO jobs (schedule_id, status, created_at, updated_at) VALUES (?, ?, ?, ?);`
 
-	result, err := s.DB.Exec(insertJobSQL, cronjobID, "running", time.Now(), time.Now())
+	result, err := s.DB.Exec(insertJobSQL, scheduleID, "running", time.Now(), time.Now())
 	if err != nil {
 		return 0, fmt.Errorf("error executing insert job SQL: %w", err)
 	}

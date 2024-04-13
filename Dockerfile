@@ -13,7 +13,7 @@ RUN CGO_ENABLED=1 GOOS=linux go build -ldflags '-extldflags "-static"' -v -o /fl
 COPY ./bin/* /fly/bin/
 
 # Start from Ubuntu 20.04 for the runtime stage
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 
 # Avoid debconf warnings during the build
 ENV DEBIAN_FRONTEND=noninteractive

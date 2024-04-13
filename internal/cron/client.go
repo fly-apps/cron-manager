@@ -39,7 +39,7 @@ func NewClient(ctx context.Context, appName string, store *Store) (*Client, erro
 	}, nil
 }
 
-func (c *Client) MachineProvision(ctx context.Context, cronjob *CronJob, job *Job) (*fly.Machine, error) {
+func (c *Client) MachineProvision(ctx context.Context, schedule *Schedule, job *Job) (*fly.Machine, error) {
 	machineConfig := fly.LaunchMachineInput{
 		Config: &fly.MachineConfig{
 			Guest: &fly.MachineGuest{
@@ -47,13 +47,13 @@ func (c *Client) MachineProvision(ctx context.Context, cronjob *CronJob, job *Jo
 				CPUs:     1,
 				MemoryMB: 1024,
 			},
-			Image: cronjob.Image,
+			Image: schedule.Image,
 			Restart: &fly.MachineRestart{
 				MaxRetries: 1,
-				Policy:     fly.MachineRestartPolicy(cronjob.RestartPolicy),
+				Policy:     fly.MachineRestartPolicy(schedule.RestartPolicy),
 			},
 		},
-		Region: "ord",
+		Region: schedule.Region,
 	}
 
 	machine, err := c.flapsClient.Launch(ctx, machineConfig)
@@ -89,9 +89,9 @@ func (c *Client) MachineDestroy(ctx context.Context, machine *fly.Machine) error
 	return nil
 }
 
-func (c *Client) MachineExec(ctx context.Context, cronJob *CronJob, job *Job, machine *fly.Machine) (*fly.MachineExecResponse, error) {
+func (c *Client) MachineExec(ctx context.Context, schedule *Schedule, job *Job, machine *fly.Machine) (*fly.MachineExecResponse, error) {
 	execReq := &fly.MachineExecRequest{
-		Cmd:     cronJob.Command,
+		Cmd:     schedule.Command,
 		Timeout: 30,
 	}
 	return c.flapsClient.Exec(ctx, machine.ID, execReq)

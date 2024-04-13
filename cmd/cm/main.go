@@ -8,7 +8,10 @@ import (
 	"github.com/adhocore/gronx"
 	"github.com/fly-apps/cron-manager/internal/cron"
 	"github.com/olekukonko/tablewriter"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
 func main() {
@@ -18,11 +21,13 @@ func main() {
 	rootCmd.AddCommand(schedulesCmd)
 	rootCmd.AddCommand(jobsCmd)
 
+	schedulesCmd.AddCommand(syncCrontabCmd)
 	schedulesCmd.AddCommand(listCmd)
 	schedulesCmd.AddCommand(registerScheduleCmd)
 	schedulesCmd.AddCommand(unregisterScheduleCmd)
 
 	jobsCmd.AddCommand(listJobsCmd)
+	jobsCmd.AddCommand(processJobCmd)
 	jobsCmd.AddCommand(showJobCmd)
 
 	if err := rootCmd.Execute(); err != nil {
@@ -31,20 +36,28 @@ func main() {
 	}
 }
 
+var log = logrus.New()
+
 func init() {
 	registerScheduleCmd.Flags().StringP("app-name", "a", "", "The name of the app the job should run against")
 	registerScheduleCmd.Flags().StringP("image", "i", "", "The image the Machine will run")
 	registerScheduleCmd.Flags().StringP("schedule", "s", "", "The schedule to the job will run on. (Uses the cron format)")
-	registerScheduleCmd.Flags().StringP("restart-policy", "r", "", "The restart policy for the Machine. (no, always, on-failure)")
 	registerScheduleCmd.Flags().StringP("command", "c", "", "The command to run on the Machine")
+	registerScheduleCmd.Flags().StringP("region", "r", "", "The region the Machine is scheduled to run in. Example: ord")
+	registerScheduleCmd.Flags().StringP("restart-policy", "", "", "The restart policy for the Machine. (no, always, on-failure)")
+
 	registerScheduleCmd.MarkFlagRequired("app-name")
 	registerScheduleCmd.MarkFlagRequired("image")
 	registerScheduleCmd.MarkFlagRequired("schedule")
 	registerScheduleCmd.MarkFlagRequired("command")
+	registerScheduleCmd.MarkFlagRequired("region")
+
+	log.SetOutput(os.Stdout)
+	log.SetLevel(logrus.InfoLevel)
 }
 
 var registerScheduleCmd = &cobra.Command{
-	Use:   "register -app-name <app-name> -image <image> -schedule <schedule> -restart-policy <restart-policy> -command <command>",
+	Use:   "register -app-name <app-name> -image <image> -schedule <schedule> -region <region> -command <command>",
 	Short: "Register a new schedule",
 	Long:  `Register a new schedule`,
 	Args:  cobra.NoArgs,
@@ -69,6 +82,12 @@ var registerScheduleCmd = &cobra.Command{
 		}
 
 		schedule, err := cmd.Flags().GetString("schedule")
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		region, err := cmd.Flags().GetString("region")
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
@@ -101,7 +120,16 @@ var registerScheduleCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		if err := store.CreateCronJob(appName, image, schedule, command, restartPolicy); err != nil {
+		createReq := cron.CreateScheduleRequest{
+			AppName:       appName,
+			Image:         image,
+			Schedule:      schedule,
+			Command:       command,
+			RestartPolicy: restartPolicy,
+			Region:        region,
+		}
+
+		if err := store.CreateSchedule(createReq); err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
@@ -111,18 +139,18 @@ var registerScheduleCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		fmt.Println("Cronjob registered successfully")
+		fmt.Println("Schedule registered successfully")
 	},
 }
 
 var unregisterScheduleCmd = &cobra.Command{
-	Use:   "unregister <cronjob id>",
+	Use:   "unregister <schedule id>",
 	Short: "Unregisters an existing schedule",
 	Long:  `Unregisters an existing schedule`,
 	Args:  cobra.ExactArgs(1),
 
 	Run: func(cmd *cobra.Command, args []string) {
-		cronJobID := args[0]
+		scheduleID := args[0]
 
 		store, err := cron.NewStore()
 		if err != nil {
@@ -130,7 +158,7 @@ var unregisterScheduleCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		if err := store.DeleteCronJob(cronJobID); err != nil {
+		if err := store.DeleteSchedule(scheduleID); err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
@@ -140,14 +168,14 @@ var unregisterScheduleCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		fmt.Println("Cronjob successfully unregistered")
+		fmt.Println("Schedule successfully unregistered")
 	},
 }
 
 var listCmd = &cobra.Command{
 	Use:   "list",
-	Short: "Lists all registered cronjobs",
-	Long:  `Lists all registered cronjobs`,
+	Short: "List all registered schedules",
+	Long:  `List all registered schedules`,
 	Args:  cobra.NoArgs,
 
 	Run: func(cmd *cobra.Command, args []string) {
@@ -157,14 +185,14 @@ var listCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		cronjobs, err := store.ListCronJobs()
+		schedules, err := store.ListSchedules()
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
 
 		table := tablewriter.NewWriter(os.Stdout)
-		table.SetHeader([]string{"ID", "Target App", "Image", "Schedule", "Restart Policy", "Command"})
+		table.SetHeader([]string{"ID", "Target App", "Image", "Schedule", "Region", "Restart Policy", "Command"})
 
 		// Set table alignment, borders, padding, etc. as needed
 		table.SetAlignment(tablewriter.ALIGN_LEFT)
@@ -176,14 +204,15 @@ var listCmd = &cobra.Command{
 		table.SetHeaderLine(true) // Enable header line
 		table.SetAutoWrapText(false)
 
-		for _, cj := range cronjobs {
+		for _, schedule := range schedules {
 			table.Append([]string{
-				strconv.Itoa(cj.ID),
-				fmt.Sprint(cj.AppName),
-				fmt.Sprint(cj.Image),
-				fmt.Sprint(cj.Schedule),
-				fmt.Sprint(cj.RestartPolicy),
-				fmt.Sprint(cj.Command),
+				strconv.Itoa(schedule.ID),
+				fmt.Sprint(schedule.AppName),
+				fmt.Sprint(schedule.Image),
+				fmt.Sprint(schedule.Schedule),
+				fmt.Sprint(schedule.Region),
+				fmt.Sprint(schedule.RestartPolicy),
+				fmt.Sprint(schedule.Command),
 			})
 		}
 
@@ -191,14 +220,19 @@ var listCmd = &cobra.Command{
 	},
 }
 
-var listJobsCmd = &cobra.Command{
-	Use:   "list <cronjob id>",
-	Short: "Lists all jobs for a specified schedule",
-	Long:  `Lists all jobs for a specified schedule`,
+var processJobCmd = &cobra.Command{
+	Use:   "trigger <schedule id>",
+	Short: "Triggers a job for the specified schedule",
+	Long:  `Triggers a job for the specified schedules. `,
 	Args:  cobra.ExactArgs(1),
 
 	Run: func(cmd *cobra.Command, args []string) {
-		cronJobID := args[0]
+		// Convert the schedule ID to an integer
+		scheduleID, err := strconv.Atoi(args[0])
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
 
 		store, err := cron.NewStore()
 		if err != nil {
@@ -206,7 +240,34 @@ var listJobsCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		jobs, err := store.ListJobs(cronJobID, 10)
+		schedule, err := store.FindSchedule(scheduleID)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		if err := cron.ProcessJob(cmd.Context(), log, store, schedule.ID); err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+	},
+}
+var listJobsCmd = &cobra.Command{
+	Use:   "list <schedule id>",
+	Short: "Lists all jobs for the specified schedule",
+	Long:  `Lists all jobs for the specified schedule`,
+	Args:  cobra.ExactArgs(1),
+
+	Run: func(cmd *cobra.Command, args []string) {
+		scheduleID := args[0]
+
+		store, err := cron.NewStore()
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		jobs, err := store.ListJobs(scheduleID, 10)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
@@ -319,5 +380,27 @@ var showJobCmd = &cobra.Command{
 			}
 			table.Render()
 		}
+	},
+}
+
+var syncCrontabCmd = &cobra.Command{
+	Use:   "sync",
+	Short: "Syncs sqlite schedules with crontab",
+	Long:  `Syncs sqlite schedules with crontab`,
+	Args:  cobra.NoArgs,
+
+	Run: func(cmd *cobra.Command, args []string) {
+		store, err := cron.NewStore()
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		if err := cron.SyncCrontab(store); err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		fmt.Println("Crontab synced successfully")
 	},
 }

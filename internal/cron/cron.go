@@ -10,7 +10,7 @@ import (
 const (
 	executeCommand = "/usr/local/bin/process-job"
 	logFilePath    = "/data/cron.log"
-	cronFilePath   = "/data/cronjobs"
+	cronFilePath   = "/data/crontab"
 )
 
 func InitializeCron(store *Store) error {
@@ -31,9 +31,9 @@ func InitializeCron(store *Store) error {
 }
 
 func SyncCrontab(store *Store) error {
-	cronjobs, err := store.ListCronJobs()
+	schedules, err := store.ListSchedules()
 	if err != nil {
-		return fmt.Errorf("failed to list cronjobs: %w", err)
+		return fmt.Errorf("failed to list schedules: %w", err)
 	}
 
 	file, err := os.Create(cronFilePath)
@@ -42,8 +42,8 @@ func SyncCrontab(store *Store) error {
 	}
 	defer file.Close()
 
-	for _, cronjob := range cronjobs {
-		entry := fmt.Sprintf("%s %s %d >> %s 2>&1\n", cronjob.Schedule, executeCommand, cronjob.ID, logFilePath)
+	for _, schedule := range schedules {
+		entry := fmt.Sprintf("%s %s %d >> %s 2>&1\n", schedule.Schedule, executeCommand, schedule.ID, logFilePath)
 		file.WriteString(entry)
 	}
 
@@ -51,7 +51,7 @@ func SyncCrontab(store *Store) error {
 		return fmt.Errorf("failed to sync crontab: %w", err)
 	}
 
-	log.Printf("[INFO] Synced %d cronjobs to crontab\n", len(cronjobs))
+	log.Printf("[INFO] Synced %d schedule(s) to crontab\n", len(schedules))
 
 	return nil
 }
