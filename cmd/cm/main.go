@@ -40,17 +40,18 @@ var log = logrus.New()
 
 func init() {
 	registerScheduleCmd.Flags().StringP("app-name", "a", "", "The name of the app the job should run against")
-	registerScheduleCmd.Flags().StringP("image", "i", "", "The image the Machine will run")
 	registerScheduleCmd.Flags().StringP("schedule", "s", "", "The schedule to the job will run on. (Uses the cron format)")
 	registerScheduleCmd.Flags().StringP("command", "c", "", "The command to run on the Machine")
 	registerScheduleCmd.Flags().StringP("region", "r", "", "The region the Machine is scheduled to run in. Example: ord")
-	registerScheduleCmd.Flags().StringP("restart-policy", "", "", "The restart policy for the Machine. (no, always, on-failure)")
+	registerScheduleCmd.Flags().StringP("machine-config", "", "", "The machine configuration in json format")
+	// registerScheduleCmd.Flags().StringP("image", "i", "", "The image the Machine will run")
+	// registerScheduleCmd.Flags().StringP("restart-policy", "", "", "The restart policy for the Machine. (no, always, on-failure)")
 
 	registerScheduleCmd.MarkFlagRequired("app-name")
-	registerScheduleCmd.MarkFlagRequired("image")
 	registerScheduleCmd.MarkFlagRequired("schedule")
 	registerScheduleCmd.MarkFlagRequired("command")
 	registerScheduleCmd.MarkFlagRequired("region")
+	registerScheduleCmd.MarkFlagRequired("machine-config")
 
 	log.SetOutput(os.Stdout)
 	log.SetLevel(logrus.InfoLevel)
@@ -75,11 +76,11 @@ var registerScheduleCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		image, err := cmd.Flags().GetString("image")
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
+		// image, err := cmd.Flags().GetString("image")
+		// if err != nil {
+		// 	fmt.Println(err)
+		// 	os.Exit(1)
+		// }
 
 		schedule, err := cmd.Flags().GetString("schedule")
 		if err != nil {
@@ -120,13 +121,11 @@ var registerScheduleCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		createReq := cron.CreateScheduleRequest{
-			AppName:       appName,
-			Image:         image,
-			Schedule:      schedule,
-			Command:       command,
-			RestartPolicy: restartPolicy,
-			Region:        region,
+		createReq := cron.Schedule{
+			AppName:  appName,
+			Schedule: schedule,
+			Command:  command,
+			Region:   region,
 		}
 
 		if err := store.CreateSchedule(createReq); err != nil {
@@ -208,10 +207,10 @@ var listCmd = &cobra.Command{
 			table.Append([]string{
 				strconv.Itoa(schedule.ID),
 				fmt.Sprint(schedule.AppName),
-				fmt.Sprint(schedule.Image),
+				fmt.Sprint(schedule.Config.Image),
 				fmt.Sprint(schedule.Schedule),
 				fmt.Sprint(schedule.Region),
-				fmt.Sprint(schedule.RestartPolicy),
+				fmt.Sprint(schedule.Config.Restart.Policy),
 				fmt.Sprint(schedule.Command),
 			})
 		}

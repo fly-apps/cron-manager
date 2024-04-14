@@ -2,8 +2,11 @@ package cron
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/superfly/fly-go"
 )
 
 const (
@@ -14,16 +17,26 @@ type Store struct {
 	*sql.DB
 }
 
+type Schedule struct {
+	ID       int               `json:"id"`
+	Name     string            `json:"name"`
+	AppName  string            `json:"app_name"`
+	Schedule string            `json:"schedule"`
+	Command  string            `json:"command"`
+	Region   string            `json:"region"`
+	Config   fly.MachineConfig `json:"config"`
+}
+
 func (s Store) SetupDB() error {
 	createSchedulesTableSQL := `CREATE TABLE IF NOT EXISTS schedules (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		name TEXT NOT NULL,
 		app_name TEXT NOT NULL,
-		image TEXT,
 		schedule TEXT NOT NULL,
-		region TEXT NOT NULL,
 		command TEXT NOT NULL,
-		restart_policy TEXT CHECK(restart_policy IN ('no', 'always', 'on-failure')) NOT NULL DEFAULT 'on-failure',
-		UNIQUE(app_name, image)
+		region TEXT NOT NULL,
+		config TEXT NOT NULL,
+		UNIQUE(name)
 	);`
 	_, err := s.Exec(createSchedulesTableSQL)
 	if err != nil {
@@ -60,16 +73,6 @@ func NewStore() (*Store, error) {
 	return &Store{s}, nil
 }
 
-type Schedule struct {
-	ID            int    `json:"id"`
-	AppName       string `json:"app_name"`
-	Image         string `json:"image"`
-	Schedule      string `json:"schedule"`
-	Command       string `json:"command"`
-	Region        string `json:"region"`
-	RestartPolicy string `json:"restart_policy"`
-}
-
 type Job struct {
 	ID         int            `json:"id"`
 	ScheduleID int            `json:"schedule_id"`
@@ -84,24 +87,54 @@ type Job struct {
 }
 
 func (s Store) FindSchedule(id int) (*Schedule, error) {
-	var appName, image, schedule, command, restartPolicy string
-	row := s.QueryRow("SELECT app_name, image, schedule, command, restart_policy FROM schedules WHERE id = ?", id)
-	if err := row.Scan(&appName, &image, &schedule, &command, &restartPolicy); err != nil {
+	var name, appName, schedule, command, config string
+	row := s.QueryRow("SELECT name, app_name, schedule, command, config FROM schedules WHERE id = ?", id)
+	if err := row.Scan(&name, &appName, &schedule, &command, &config); err != nil {
 		return &Schedule{}, err
 	}
 
+	var cfg fly.MachineConfig
+
+	if err := json.Unmarshal([]byte(config), &cfg); err != nil {
+		return nil, err
+	}
+
 	return &Schedule{
-		ID:            id,
-		AppName:       appName,
-		Image:         image,
-		Schedule:      schedule,
-		Command:       command,
-		RestartPolicy: restartPolicy,
+		ID:       id,
+		Name:     name,
+		AppName:  appName,
+		Schedule: schedule,
+		Command:  command,
+		Config:   cfg,
+	}, nil
+}
+
+func (s Store) FindScheduleByName(name string) (*Schedule, error) {
+	var id int
+	var appName, schedule, command, config string
+	row := s.QueryRow("SELECT id, app_name, schedule, command, config FROM schedules WHERE name = ?", name)
+	if err := row.Scan(&id, &appName, &schedule, &command, &config); err != nil {
+		return nil, err
+	}
+
+	var cfg fly.MachineConfig
+
+	if err := json.Unmarshal([]byte(config), &cfg); err != nil {
+		return nil, err
+	}
+
+	return &Schedule{
+		ID:       id,
+		Name:     name,
+		AppName:  appName,
+		Schedule: schedule,
+		Command:  command,
+		Config:   cfg,
 	}, nil
 }
 
 func (s Store) ListSchedules() ([]Schedule, error) {
-	rows, err := s.Query("SELECT id, app_name, image, schedule, region, command, restart_policy FROM schedules")
+	rows, err := s.Query("SELECT id, name, app_name, schedule, region, command, config FROM schedules")
 	if err != nil {
 		return nil, err
 	}
@@ -110,19 +143,25 @@ func (s Store) ListSchedules() ([]Schedule, error) {
 	var schedules []Schedule
 	for rows.Next() {
 		var id int
-		var appName, region, image, schedule, command, restartPolicy string
-		if err := rows.Scan(&id, &appName, &image, &schedule, &region, &command, &restartPolicy); err != nil {
+		var name, appName, region, schedule, command, config string
+		if err := rows.Scan(&id, &name, &appName, &schedule, &region, &command, &config); err != nil {
+			return nil, err
+		}
+
+		var cfg fly.MachineConfig
+
+		if err := json.Unmarshal([]byte(config), &cfg); err != nil {
 			return nil, err
 		}
 
 		schedules = append(schedules, Schedule{
-			ID:            id,
-			AppName:       appName,
-			Image:         image,
-			Schedule:      schedule,
-			Region:        region,
-			Command:       command,
-			RestartPolicy: restartPolicy,
+			ID:       id,
+			Name:     name,
+			AppName:  appName,
+			Schedule: schedule,
+			Region:   region,
+			Command:  command,
+			Config:   cfg,
 		})
 	}
 
@@ -193,24 +232,40 @@ func (s Store) ListJobs(scheduleID string, limit int) ([]Job, error) {
 
 }
 
-type CreateScheduleRequest struct {
-	AppName       string `json:"app_name"`
-	Image         string `json:"image"`
-	Schedule      string `json:"schedule"`
-	Command       string `json:"command"`
-	Region        string `json:"region"`
-	RestartPolicy string `json:"restart_policy"`
+func (s Store) CreateSchedule(sch Schedule) error {
+	insertScheduleSQL := `INSERT INTO schedules (name, app_name, schedule, command, region, config) VALUES (?, ?, ?, ?, ?, ?);`
+
+	cfgBytes, err := json.Marshal(sch.Config)
+	if err != nil {
+		return fmt.Errorf("error marshalling machine config: %w", err)
+	}
+
+	_, err = s.Exec(insertScheduleSQL,
+		sch.Name,
+		sch.AppName,
+		sch.Schedule,
+		sch.Command,
+		sch.Region,
+		string(cfgBytes),
+	)
+
+	return err
 }
 
-func (s Store) CreateSchedule(req CreateScheduleRequest) error {
-	insertScheduleSQL := `INSERT INTO schedules (app_name, image, schedule, command, region, restart_policy) VALUES (?, ?, ?, ?, ?, ?);`
-	_, err := s.Exec(insertScheduleSQL,
-		req.AppName,
-		req.Image,
-		req.Schedule,
-		req.Command,
-		req.Region,
-		req.RestartPolicy,
+func (s Store) UpdateSchedule(sch Schedule) error {
+	cfgBytes, err := json.Marshal(sch.Config)
+	if err != nil {
+		return fmt.Errorf("error marshalling machine config: %w", err)
+	}
+
+	insertScheduleSQL := `UPDATE schedules SET app_name = ?, schedule = ?, command = ?, region = ?, config = ? WHERE name = ?;`
+	_, err = s.Exec(insertScheduleSQL,
+		sch.AppName,
+		sch.Schedule,
+		sch.Command,
+		sch.Region,
+		string(cfgBytes),
+		sch.Name,
 	)
 
 	return err

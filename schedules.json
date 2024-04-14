@@ -1,0 +1,46 @@
+[
+    {
+        "name": "uptime-check",
+        "app_name": "shaun-pg-flex",
+        "schedule": "0 * * * *",
+        "region": "ord",
+        "command": "uptime",
+        "enabled": true,
+        "config": {
+            "auto_destroy": true,
+            "disable_machine_autostart": true,
+            "guest": {
+                "cpu_kind": "shared",
+                "cpus": 1,
+                "memory_mb": 512
+            },
+            "image": "ghcr.io/livebook-dev/livebook:0.11.4",
+            "restart": {
+                "max_retries": 1,
+                "policy": "no"
+            }
+        }
+    },
+    {
+        "name": "storage-check",
+        "app_name": "shaun-pg-flex",
+        "schedule": "0 * * * *",
+        "region": "ord",
+        "command": "df -h",
+        "enabled": true,
+        "config": {
+            "auto_destroy": true,
+            "disable_machine_autostart": true,
+            "guest": {
+                "cpu_kind": "shared",
+                "cpus": 1,
+                "memory_mb": 512
+            },
+            "image": "docker-hub-mirror.fly.io/library/nginx:latest",
+            "restart": {
+                "max_retries": 1,
+                "policy": "no"
+            }
+        }
+    }
+]

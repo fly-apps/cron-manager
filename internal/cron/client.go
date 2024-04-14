@@ -41,18 +41,7 @@ func NewClient(ctx context.Context, appName string, store *Store) (*Client, erro
 
 func (c *Client) MachineProvision(ctx context.Context, schedule *Schedule, job *Job) (*fly.Machine, error) {
 	machineConfig := fly.LaunchMachineInput{
-		Config: &fly.MachineConfig{
-			Guest: &fly.MachineGuest{
-				CPUKind:  "shared",
-				CPUs:     1,
-				MemoryMB: 1024,
-			},
-			Image: schedule.Image,
-			Restart: &fly.MachineRestart{
-				MaxRetries: 1,
-				Policy:     fly.MachineRestartPolicy(schedule.RestartPolicy),
-			},
-		},
+		Config: &schedule.Config,
 		Region: schedule.Region,
 	}
 

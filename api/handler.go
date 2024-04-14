@@ -14,7 +14,6 @@ import (
 type contextKey int
 
 const (
-	// Port is the port the HTTP server listens on
 	Port                 = 5500
 	loggerKey contextKey = iota
 )

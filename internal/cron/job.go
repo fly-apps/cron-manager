@@ -46,7 +46,7 @@ func ProcessJob(ctx context.Context, log *logrus.Logger, store *Store, scheduleI
 		return failJob(1, fmt.Errorf("failed to create client: %w", err))
 	}
 
-	logger.Debugf("provisioning machine with image %s...", schedule.Image)
+	logger.Debugf("provisioning machine with image %s...", schedule.Config.Image)
 
 	// Provision a new machine to run the job
 	machine, err := client.MachineProvision(ctx, schedule, job)
