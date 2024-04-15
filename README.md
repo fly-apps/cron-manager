@@ -32,6 +32,23 @@ fly deploy .
 
 Schedules can be defined using the `schedules.json` file. 
 
+### JSON Fields
+
+- **`name`**: A unique identifier for the schedule. This is used to differentiate new schedules added from existing schedules that need to be updated.
+  
+- **`app_name`**: The name of your existing application that the schedule is associated with.  Provisoned Machines associated with each Job will be associated with this App.
+  
+- **`schedule`**: The cron expression that defines how often the Job should run. The format follows the standard cron format (minute, hour, day of month, month, day of week).
+
+- **`region`**: The region where the scheduled job will execute.
+  
+- **`command`**: The command that will be executed from the provisioned Machine associated with the job.
+
+- **`config`**: A nested object containing the jobs Machine configuration.
+[Machine API Spec](https://docs.machines.dev/#tag/machines/post/apps/{app_name}/machines).
+
+
+### Example Schedule
 ```json
 [
     {
@@ -58,8 +75,6 @@ Schedules can be defined using the `schedules.json` file.
 ]
 ```
 
-**Note: The full `config` spec can be found within the 
-[Machine API Spec](https://docs.machines.dev/#tag/machines/post/apps/{app_name}/machines).**
 
 
 ## Viewing Schedules
