@@ -30,7 +30,7 @@ fly deploy .
 
 ## Managing Schedules
 
-Schedules can be defined using the `schedules.json` file.  Here's an example:
+Schedules can be defined using the `schedules.json` file. 
 
 ```json
 [
@@ -65,7 +65,6 @@ Schedules can be defined using the `schedules.json` file.  Here's an example:
 ## Viewing Schedules
 To view your registered schedules, you can use the `cm schedules list` command.  
 
-
 ```
 fly ssh console --app-name <app-name>
 
@@ -88,7 +87,7 @@ Each job execution is recorded within a local sqlite.  To view the job history o
 ```bash
 fly ssh console --app-name <app-name>
 
-cm jobs list 1
+cm jobs list <schedule-id>
 ```
 
 Output example:
@@ -109,6 +108,32 @@ Output example:
 |----|----------------|-----------|-----------|-------------------------|-------------------------|-------------------------|
 ```
 
-**Note: stdout and stderr is also captured, but is not currently specified within the output.  To view this you must inspect the sqlite database located at `/data/state.db`**
+## Viewing a specific job
+```bash
+cm jobs show <job-id>
+```
+
+Output example:
+```
+cm jobs show 14
+Job Details
+  ID          = 30
+  Status      = completed
+  Machine ID  = 2866e19a795908
+  Exit Code   = 0
+  Created At  = 2024-04-15 14:34:01 UTC
+  Updated At  = 2024-04-15 14:34:03 UTC
+  Finished At = 2024-04-15 14:34:03 UTC
+  Stdout      = 14:34:03 up 0 min,  0 user,  load average: 0.00, 0.00, 0.00
+  Stderr      =
+```
+
+
+## Testing
+In the event you would like to trigger a Job off schedule for testing, you can do so with the `trigger` command.
+
+```bash
+cm jobs trigger <schedule-id>
+```
 
 
