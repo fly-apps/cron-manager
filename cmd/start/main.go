@@ -45,7 +45,7 @@ func main() {
 		panic(fmt.Errorf("failed to sync crontab: %w", err))
 	}
 
-	if err := cron.SyncSchedules(log, store); err != nil {
+	if err := cron.SyncSchedules(store, log); err != nil {
 		log.Infof("failed to sync schedules: %v", err)
 		// panic(fmt.Errorf("failed to load schedules: %w", err))
 	}

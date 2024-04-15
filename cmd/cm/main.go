@@ -5,7 +5,6 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/adhocore/gronx"
 	"github.com/fly-apps/cron-manager/internal/cron"
 	"github.com/olekukonko/tablewriter"
 	"github.com/sirupsen/logrus"
@@ -23,8 +22,6 @@ func main() {
 
 	schedulesCmd.AddCommand(syncCrontabCmd)
 	schedulesCmd.AddCommand(listCmd)
-	schedulesCmd.AddCommand(registerScheduleCmd)
-	schedulesCmd.AddCommand(unregisterScheduleCmd)
 
 	jobsCmd.AddCommand(listJobsCmd)
 	jobsCmd.AddCommand(processJobCmd)
@@ -39,130 +36,8 @@ func main() {
 var log = logrus.New()
 
 func init() {
-	registerScheduleCmd.Flags().StringP("app-name", "a", "", "The name of the app the job should run against")
-	registerScheduleCmd.Flags().StringP("schedule", "s", "", "The schedule to the job will run on. (Uses the cron format)")
-	registerScheduleCmd.Flags().StringP("command", "c", "", "The command to run on the Machine")
-	registerScheduleCmd.Flags().StringP("region", "r", "", "The region the Machine is scheduled to run in. Example: ord")
-	registerScheduleCmd.Flags().StringP("machine-config", "", "", "The machine configuration in json format")
-	// registerScheduleCmd.Flags().StringP("image", "i", "", "The image the Machine will run")
-	// registerScheduleCmd.Flags().StringP("restart-policy", "", "", "The restart policy for the Machine. (no, always, on-failure)")
-
-	registerScheduleCmd.MarkFlagRequired("app-name")
-	registerScheduleCmd.MarkFlagRequired("schedule")
-	registerScheduleCmd.MarkFlagRequired("command")
-	registerScheduleCmd.MarkFlagRequired("region")
-	registerScheduleCmd.MarkFlagRequired("machine-config")
-
 	log.SetOutput(os.Stdout)
 	log.SetLevel(logrus.InfoLevel)
-}
-
-var registerScheduleCmd = &cobra.Command{
-	Use:   "register -app-name <app-name> -image <image> -schedule <schedule> -region <region> -command <command>",
-	Short: "Register a new schedule",
-	Long:  `Register a new schedule`,
-	Args:  cobra.NoArgs,
-
-	Run: func(cmd *cobra.Command, args []string) {
-		store, err := cron.NewStore()
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-
-		appName, err := cmd.Flags().GetString("app-name")
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-
-		schedule, err := cmd.Flags().GetString("schedule")
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-
-		region, err := cmd.Flags().GetString("region")
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-
-		gron := gronx.New()
-		if gron.IsValid(schedule) == false {
-			fmt.Println("Invalid schedule")
-			os.Exit(1)
-		}
-
-		restartPolicy, err := cmd.Flags().GetString("restart-policy")
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-
-		if restartPolicy == "" {
-			restartPolicy = "no"
-		}
-
-		if restartPolicy != "no" && restartPolicy != "always" && restartPolicy != "on-failure" {
-			fmt.Println("Invalid restart policy. Must be one of: no, always, on-failure")
-			os.Exit(1)
-		}
-
-		command, err := cmd.Flags().GetString("command")
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-
-		createReq := cron.Schedule{
-			AppName:  appName,
-			Schedule: schedule,
-			Command:  command,
-			Region:   region,
-		}
-
-		if err := store.CreateSchedule(createReq); err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-
-		if err := cron.SyncCrontab(store, log); err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-
-		fmt.Println("Schedule registered successfully")
-	},
-}
-
-var unregisterScheduleCmd = &cobra.Command{
-	Use:   "unregister <schedule id>",
-	Short: "Unregisters an existing schedule",
-	Long:  `Unregisters an existing schedule`,
-	Args:  cobra.ExactArgs(1),
-
-	Run: func(cmd *cobra.Command, args []string) {
-		scheduleID := args[0]
-
-		store, err := cron.NewStore()
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-
-		if err := store.DeleteSchedule(scheduleID); err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-
-		if err := cron.SyncCrontab(store, log); err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-
-		fmt.Println("Schedule successfully unregistered")
-	},
 }
 
 var listCmd = &cobra.Command{
@@ -389,7 +264,7 @@ var syncCrontabCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		if err := cron.SyncSchedules(log, store); err != nil {
+		if err := cron.SyncSchedules(store, log); err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}

@@ -12,7 +12,7 @@ const (
 	schedulesFilePath = "/usr/local/share/schedules.json"
 )
 
-func SyncSchedules(log *logrus.Logger, store *Store) error {
+func SyncSchedules(store *Store, log *logrus.Logger) error {
 	schedulesBytes, err := os.ReadFile(schedulesFilePath)
 	if err != nil {
 		return fmt.Errorf("failed to open schedules file: %w", err)
@@ -66,7 +66,7 @@ func SyncSchedules(log *logrus.Logger, store *Store) error {
 		}
 	}
 
-	if err := SyncCrontab(store, log); err != nil {
+	if err := syncCrontab(store, log); err != nil {
 		return fmt.Errorf("failed to sync crontab: %w", err)
 	}
 
