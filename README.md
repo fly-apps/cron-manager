@@ -52,7 +52,8 @@ Schedules are defined using the `schedules.json` file located within the project
 
 ### JSON Fields
 
-- **`name`**: A unique identifier for the schedule. This is used to differentiate between new schedules that need to be updated and schedules that need to be updated.
+- **`name`**: A unique identifier for the schedule. This is used to differentiate new schedules from schedules that need to be updated or deleted.
+  **WARNING: Changing the `name` value after it has been deployed will result in the schedule being deleted and recreated. All historical job references will be removed!**
   
 - **`app_name`**: The name of your existing application that the schedule is associated with.  Provisoned Machines associated with each Job will be associated with this App.
   
