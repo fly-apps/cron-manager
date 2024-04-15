@@ -6,7 +6,7 @@ Cron Manager is designed to enhance the way you manage Cron jobs on Fly.io.
 
 ### Isolated execution
 
-Each job runs in its own isolated machine, preventing issues such as configuration drift, accumulation of temporary files, or other residual effects that could impact subsequent job executions. This isolation ensures that the outcome of one job does not negatively influence another, maintaining the integrity and reliability of each task.
+Each job runs in its own isolated machine, preventing issues such as configuration drift, accumulation of temporary files, or other residual effects that could impact subsequent job executions. This isolation ensures that the outcome of one job does not negatively influence xxanother, maintaining the integrity and reliability of each job.
 
 ### Centralized Scheduling
 
@@ -14,7 +14,7 @@ Manage all your Cron jobs centrally with a simple JSON configuration. This appro
 
 ### Simplified updates
 
-Machines dedicated to specific Cron jobs are ephemeral and do not require updates. Any modifications to the schedules.json file will automatically be applied the next time the machine is provisioned for a scheduled task. This eliminates the need for ongoing maintenance of job environments, resulting in a more efficient update process.
+Machines dedicated to specific Cron jobs are ephemeral and do not require updates. Any modifications to the schedules.json file will automatically be applied the next time the machine is provisioned for a scheduled job. This eliminates the need for ongoing maintenance of job environments, resulting in a more efficient update process.
 
 ### Enhanced Logs and Monitoring 
 
