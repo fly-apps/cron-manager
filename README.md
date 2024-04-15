@@ -1,28 +1,28 @@
 # Cron Manager
 
-Cron Manager is designed to enhance the way you manage Cron tasks on Fly.io.
+Cron Manager is designed to enhance the way you manage Cron jobs on Fly.io.
 
 
 ## Getting started
 
 Follow these steps to get your Cron Manager application up and running on Fly.io:
 
-**1. Clone the project**
+**Clone the project**
 ```bash
 git clone git@github.com:fly-apps/cron-manager.git && cd cron-manager
 ```
 
-**2. Create your app (Make sure the app name matches the fly.toml entry)**
+**Create your app (Make sure the app name matches the fly.toml entry)**
 ```
 fly apps create cron-manager
 ```
 
-**3. Set your **FLY_API_TOKEN** as a secret**
+**Set your **FLY_API_TOKEN** as a secret**
 ```bash
 fly secrets set FLY_API_TOKEN=$(fly auth token)
 ```
 
-**4. Deploy your app**
+**Deploy your app**
 ```bash
 fly deploy .
 ```
