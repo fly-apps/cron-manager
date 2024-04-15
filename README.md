@@ -48,7 +48,7 @@ fly deploy .
 
 ## Managing Schedules
 
-Schedules are defined using the `schedules.json` file located within the projects root directory.
+Schedules are managed using the `schedules.json` file located within the projects root directory. Any new additions, updates, or deletions to this file are automatically reconciled on deploy.
 
 ### JSON Fields
 
