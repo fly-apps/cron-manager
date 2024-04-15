@@ -1,6 +1,6 @@
 # Cron Manager
 
-Cron Manager is designed to enhance the way you manage Cron jobs on Fly.io by running each job execution within its own machine!
+Cron Manager is designed to enhance the way you manage Cron jobs on Fly.io.
 
 ## Key Features and Benefits
 
