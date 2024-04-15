@@ -10,7 +10,10 @@ require (
 	github.com/superfly/fly-go v0.1.4
 )
 
-require github.com/go-gorp/gorp/v3 v3.1.0 // indirect
+require (
+	github.com/go-gorp/gorp/v3 v3.1.0 // indirect
+	github.com/jmoiron/sqlx v1.3.5
+)
 
 require (
 	github.com/Khan/genqlient v0.6.0 // indirect

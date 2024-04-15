@@ -19,7 +19,6 @@ func InitializeCron(store *Store) error {
 		return fmt.Errorf("failed to initialize log file: %w", err)
 	}
 
-	// TODO - This should be supervised.
 	if err := startDaemon(); err != nil {
 		return fmt.Errorf("failed to start daemon: %w", err)
 	}

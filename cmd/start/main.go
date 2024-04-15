@@ -32,12 +32,12 @@ func main() {
 		}
 	}
 
-	store, err := cron.NewStore()
+	store, err := cron.NewStore(cron.StorePath)
 	if err != nil {
 		panic(fmt.Errorf("failed to create store: %w", err))
 	}
 
-	if err := store.SetupDB(log); err != nil {
+	if err := store.SetupDB(log, cron.MigrationsPath); err != nil {
 		panic(fmt.Errorf("failed to setup db: %w", err))
 	}
 
@@ -46,8 +46,7 @@ func main() {
 	}
 
 	if err := cron.SyncSchedules(store, log); err != nil {
-		log.Infof("failed to sync schedules: %v", err)
-		// panic(fmt.Errorf("failed to load schedules: %w", err))
+		panic(fmt.Errorf("failed to load schedules: %w", err))
 	}
 
 	if err := api.StartHttpServer(log); err != nil {

@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS schedules (
 	schedule TEXT NOT NULL,
 	command TEXT NOT NULL,
 	region TEXT NOT NULL,
-	config TEXT NOT NULL,
+	config JSON NOT NULL,
 	UNIQUE(name)
 );
 

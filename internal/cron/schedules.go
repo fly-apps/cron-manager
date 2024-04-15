@@ -13,14 +13,9 @@ const (
 )
 
 func SyncSchedules(store *Store, log *logrus.Logger) error {
-	schedulesBytes, err := os.ReadFile(schedulesFilePath)
+	schedules, err := readSchedulesFromFile(schedulesFilePath)
 	if err != nil {
-		return fmt.Errorf("failed to open schedules file: %w", err)
-	}
-
-	var schedules []Schedule
-	if err := json.Unmarshal(schedulesBytes, &schedules); err != nil {
-		return fmt.Errorf("failed to unmarshal schedules: %w", err)
+		return fmt.Errorf("failed to read schedules from file: %w", err)
 	}
 
 	// Query existing schedules
@@ -81,4 +76,18 @@ func findScheduleByName(schedules []Schedule, name string) *Schedule {
 	}
 
 	return nil
+}
+
+func readSchedulesFromFile(schedulesFilePath string) ([]Schedule, error) {
+	schedulesBytes, err := os.ReadFile(schedulesFilePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open schedules file: %w", err)
+	}
+
+	var schedules []Schedule
+	if err := json.Unmarshal(schedulesBytes, &schedules); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal schedules: %w", err)
+	}
+
+	return schedules, nil
 }

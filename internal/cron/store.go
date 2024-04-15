@@ -6,45 +6,57 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/jmoiron/sqlx"
 	migrate "github.com/rubenv/sql-migrate"
 	"github.com/sirupsen/logrus"
 	"github.com/superfly/fly-go"
 )
 
 const (
-	migrationsPath = "/usr/local/share/migrations"
-	storePath      = "/data/state.db?_busy_timeout=5000&_journal_mode=WAL"
+	StorePath      = "/data/state.db?_busy_timeout=5000&_journal_mode=WAL"
+	MigrationsPath = "/usr/local/share/migrations"
 )
 
 type Schedule struct {
-	ID       int               `json:"id"`
-	Name     string            `json:"name"`
-	AppName  string            `json:"app_name"`
-	Schedule string            `json:"schedule"`
-	Command  string            `json:"command"`
-	Region   string            `json:"region"`
-	Config   fly.MachineConfig `json:"config"`
+	ID       int               `json:"id" db:"id"`
+	Name     string            `json:"name" db:"name"`
+	AppName  string            `json:"app_name" db:"app_name"`
+	Schedule string            `json:"schedule" db:"schedule"`
+	Command  string            `json:"command" db:"command"`
+	Region   string            `json:"region" db:"region"`
+	Config   fly.MachineConfig `json:"config" db:"config"`
+}
+
+// TODO - Remove this
+type RawSchedule struct {
+	ID       int    `json:"id" db:"id"`
+	Name     string `json:"name" db:"name"`
+	AppName  string `json:"app_name" db:"app_name"`
+	Schedule string `json:"schedule" db:"schedule"`
+	Command  string `json:"command" db:"command"`
+	Region   string `json:"region" db:"region"`
+	Config   string `json:"config" db:"config"` // JSON string
 }
 
 type Job struct {
-	ID         int            `json:"id"`
-	ScheduleID int            `json:"schedule_id"`
-	Status     string         `json:"status"`
-	Stdout     sql.NullString `json:"stdout"`
-	Stderr     sql.NullString `json:"stderr"`
-	MachineID  sql.NullString `json:"machine_id"`
-	ExitCode   sql.NullInt64  `json:"exit_code"`
-	CreatedAt  time.Time      `json:"created_at"`
-	UpdatedAt  time.Time      `json:"updated_at"`
-	FinishedAt sql.NullTime   `json:"finished_at"`
+	ID         int            `json:"id" db:"id"`
+	ScheduleID int            `json:"schedule_id" db:"schedule_id"`
+	Status     string         `json:"status" db:"status"`
+	Stdout     sql.NullString `json:"stdout" db:"stdout"`
+	Stderr     sql.NullString `json:"stderr" db:"stderr"`
+	MachineID  sql.NullString `json:"machine_id" db:"machine_id"`
+	ExitCode   sql.NullInt64  `json:"exit_code" db:"exit_code"`
+	CreatedAt  time.Time      `json:"created_at" db:"created_at"`
+	UpdatedAt  time.Time      `json:"updated_at" db:"updated_at"`
+	FinishedAt sql.NullTime   `json:"finished_at" db:"finished_at"`
 }
 
 type Store struct {
-	*sql.DB
+	*sqlx.DB
 }
 
-func NewStore() (*Store, error) {
-	s, err := sql.Open("sqlite3", storePath)
+func NewStore(storePath string) (*Store, error) {
+	s, err := sqlx.Open("sqlite3", storePath)
 	if err != nil {
 		return nil, err
 	}
@@ -52,12 +64,12 @@ func NewStore() (*Store, error) {
 	return &Store{s}, nil
 }
 
-func (s Store) SetupDB(log *logrus.Logger) error {
+func (s Store) SetupDB(log *logrus.Logger, migrationDirPath string) error {
 	migrations := &migrate.FileMigrationSource{
-		Dir: migrationsPath,
+		Dir: migrationDirPath,
 	}
 
-	n, err := migrate.Exec(s.DB, "sqlite3", migrations, migrate.Up)
+	n, err := migrate.Exec(s.DB.DB, "sqlite3", migrations, migrate.Up)
 	if err != nil {
 		return fmt.Errorf("error applying migrations: %w", err)
 	}
@@ -68,168 +80,73 @@ func (s Store) SetupDB(log *logrus.Logger) error {
 }
 
 func (s Store) FindSchedule(id int) (*Schedule, error) {
-	var name, region, appName, schedule, command, config string
-	row := s.QueryRow("SELECT name, region, app_name, schedule, command, config FROM schedules WHERE id = ?", id)
-	if err := row.Scan(&name, &region, &appName, &schedule, &command, &config); err != nil {
-		return &Schedule{}, err
+	var rawSchedule RawSchedule
+	if err := s.DB.Get(&rawSchedule, "SELECT * FROM schedules WHERE id = ?", id); err != nil {
+		return nil, fmt.Errorf("error getting schedule: %w", err)
 	}
 
-	var cfg fly.MachineConfig
-
-	if err := json.Unmarshal([]byte(config), &cfg); err != nil {
-		return nil, err
-	}
-
-	return &Schedule{
-		ID:       id,
-		Name:     name,
-		Region:   region,
-		AppName:  appName,
-		Schedule: schedule,
-		Command:  command,
-		Config:   cfg,
-	}, nil
+	return convertToStandardSchedule(rawSchedule)
 }
 
 func (s Store) FindScheduleByName(name string) (*Schedule, error) {
-	var id int
-	var appName, schedule, command, region, config string
-	row := s.QueryRow("SELECT id, app_name, schedule, command, region, config FROM schedules WHERE name = ?", name)
-	if err := row.Scan(&id, &appName, &schedule, &command, &region, &config); err != nil {
-		return nil, err
+	var rawSchedule RawSchedule
+	if err := s.DB.Get(&rawSchedule, "SELECT * FROM schedules WHERE name = ?", name); err != nil {
+		return nil, fmt.Errorf("error getting schedule: %w", err)
 	}
 
-	var cfg fly.MachineConfig
-
-	if err := json.Unmarshal([]byte(config), &cfg); err != nil {
-		return nil, err
-	}
-
-	return &Schedule{
-		ID:       id,
-		Name:     name,
-		AppName:  appName,
-		Schedule: schedule,
-		Command:  command,
-		Region:   region,
-		Config:   cfg,
-	}, nil
+	return convertToStandardSchedule(rawSchedule)
 }
 
 func (s Store) ListSchedules() ([]Schedule, error) {
-	rows, err := s.Query("SELECT id, name, app_name, schedule, region, command, config FROM schedules")
-	if err != nil {
-		return nil, err
+	var rawSchedules []RawSchedule
+	if err := s.DB.Select(&rawSchedules, "SELECT * FROM schedules"); err != nil {
+		return nil, fmt.Errorf("error getting schedules: %w", err)
 	}
-	defer rows.Close()
 
 	var schedules []Schedule
-	for rows.Next() {
-		var id int
-		var name, appName, region, schedule, command, config string
-		if err := rows.Scan(&id, &name, &appName, &schedule, &region, &command, &config); err != nil {
-			return nil, err
+	for _, raw := range rawSchedules {
+		schedule, err := convertToStandardSchedule(raw)
+		if err != nil {
+			return nil, fmt.Errorf("error converting schedule: %w", err)
 		}
-
-		var cfg fly.MachineConfig
-
-		if err := json.Unmarshal([]byte(config), &cfg); err != nil {
-			return nil, err
-		}
-
-		schedules = append(schedules, Schedule{
-			ID:       id,
-			Name:     name,
-			AppName:  appName,
-			Schedule: schedule,
-			Region:   region,
-			Command:  command,
-			Config:   cfg,
-		})
+		schedules = append(schedules, *schedule)
 	}
 
 	return schedules, nil
 }
 
 func (s Store) FindJob(jobID string) (*Job, error) {
-	var id int
-	var status string
-	var createdAt, updatedAt time.Time
-	var exitCode sql.NullInt64
-	var finishedAt sql.NullTime
-	var machineID, stdout, stderr sql.NullString
-
-	row := s.QueryRow("SELECT id, status, machine_id, exit_code, stdout, stderr, created_at, updated_at, finished_at FROM jobs where id = ?", jobID)
-	if err := row.Scan(&id, &status, &machineID, &exitCode, &stdout, &stderr, &createdAt, &updatedAt, &finishedAt); err != nil {
-		return &Job{}, err
+	var job Job
+	if err := s.DB.Get(&job, "SELECT * FROM jobs WHERE id = ?", jobID); err != nil {
+		return nil, fmt.Errorf("error getting job: %w", err)
 	}
 
-	return &Job{
-		ID:         id,
-		Status:     status,
-		MachineID:  machineID,
-		ExitCode:   exitCode,
-		Stdout:     stdout,
-		Stderr:     stderr,
-		CreatedAt:  createdAt,
-		UpdatedAt:  updatedAt,
-		FinishedAt: finishedAt,
-	}, nil
+	return &job, nil
 }
 
 func (s Store) ListJobs(scheduleID string, limit int) ([]Job, error) {
-	query := fmt.Sprintf("SELECT id, status, machine_id, exit_code, stdout, stderr, created_at, updated_at, finished_at FROM jobs where schedule_id = %s ORDER BY id DESC LIMIT %d", scheduleID, limit)
-	rows, err := s.Query(query)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
 	var jobs []Job
-	for rows.Next() {
-		var id int
-		var createdAt, updatedAt time.Time
-		var exitCode sql.NullInt64
-		var finishedAt sql.NullTime
-		var machineID, stdout, stderr sql.NullString
-
-		var status string
-		if err := rows.Scan(&id, &status, &machineID, &exitCode, &stdout, &stderr, &createdAt, &updatedAt, &finishedAt); err != nil {
-			return nil, err
-		}
-
-		jobs = append(jobs, Job{
-			ID:         id,
-			Status:     status,
-			MachineID:  machineID,
-			ExitCode:   exitCode,
-			Stdout:     stdout,
-			Stderr:     stderr,
-			CreatedAt:  createdAt,
-			UpdatedAt:  updatedAt,
-			FinishedAt: finishedAt,
-		})
+	if err := s.DB.Select(&jobs, "SELECT * FROM jobs WHERE schedule_id = ? ORDER BY id DESC LIMIT ?", scheduleID, limit); err != nil {
+		return nil, fmt.Errorf("error getting jobs: %w", err)
 	}
 
 	return jobs, nil
-
 }
 
 func (s Store) CreateSchedule(sch Schedule) error {
-	insertScheduleSQL := `INSERT INTO schedules (name, app_name, schedule, command, region, config) VALUES (?, ?, ?, ?, ?, ?);`
-
 	cfgBytes, err := json.Marshal(sch.Config)
 	if err != nil {
 		return fmt.Errorf("error marshalling machine config: %w", err)
 	}
 
-	_, err = s.Exec(insertScheduleSQL,
+	_, err = s.DB.Exec("INSERT INTO schedules (name, app_name, schedule, command, region, config) VALUES (?, ?, ?, ?, ?, ?)",
 		sch.Name,
 		sch.AppName,
 		sch.Schedule,
 		sch.Command,
 		sch.Region,
-		string(cfgBytes),
+		sch.Config,
+		cfgBytes,
 	)
 
 	return err
@@ -241,13 +158,12 @@ func (s Store) UpdateSchedule(sch Schedule) error {
 		return fmt.Errorf("error marshalling machine config: %w", err)
 	}
 
-	insertScheduleSQL := `UPDATE schedules SET app_name = ?, schedule = ?, command = ?, region = ?, config = ? WHERE name = ?;`
-	_, err = s.Exec(insertScheduleSQL,
+	_, err = s.DB.Exec("UPDATE schedules SET app_name = ?, schedule = ?, command = ?, region = ?, config = ? WHERE name = ?",
 		sch.AppName,
 		sch.Schedule,
 		sch.Command,
 		sch.Region,
-		string(cfgBytes),
+		cfgBytes,
 		sch.Name,
 	)
 
@@ -255,22 +171,24 @@ func (s Store) UpdateSchedule(sch Schedule) error {
 }
 
 func (s Store) DeleteSchedule(id string) error {
-	deleteScheduleSQL := `DELETE FROM schedules WHERE id = ?;`
-	_, err := s.Exec(deleteScheduleSQL, id)
+	_, err := s.Exec("DELETE FROM schedules WHERE id = ?", id)
 	if err != nil {
 		return fmt.Errorf("error deleting schedule: %w", err)
 	}
 
 	// Delete all jobs associated with the schedule
-	deleteJobsSQL := `DELETE FROM jobs WHERE schedule_id = ?;`
-	_, err = s.Exec(deleteJobsSQL, id)
+	_, err = s.Exec("DELETE FROM jobs WHERE schedule_id = ?", id)
 	return err
 }
 
 func (s Store) CreateJob(scheduleID int) (int, error) {
-	insertJobSQL := `INSERT INTO jobs (schedule_id, status, created_at, updated_at) VALUES (?, ?, ?, ?);`
+	result, err := s.DB.Exec("INSERT INTO jobs (schedule_id, status, created_at, updated_at) VALUES ($1, $2, $3, $4)",
+		scheduleID,
+		"running",
+		time.Now(),
+		time.Now(),
+	)
 
-	result, err := s.DB.Exec(insertJobSQL, scheduleID, "running", time.Now(), time.Now())
 	if err != nil {
 		return 0, fmt.Errorf("error executing insert job SQL: %w", err)
 	}
@@ -285,31 +203,71 @@ func (s Store) CreateJob(scheduleID int) (int, error) {
 }
 
 func (s Store) UpdateJobStatus(id int, status string) error {
-	updateJobStatusSQL := `UPDATE jobs SET status = ?, updated_at = ? WHERE id = ?;`
-	_, err := s.Exec(updateJobStatusSQL, status, time.Now(), id)
+	_, err := s.Exec("UPDATE jobs SET status = ?, updated_at = ? WHERE id = ?",
+		status,
+		time.Now(),
+		id,
+	)
 	return err
 }
 
 func (s Store) UpdateJobMachine(id int, machineID string) error {
-	updateJobMachineSQL := `UPDATE jobs SET machine_id = ?, updated_at = ? WHERE id = ?;`
-	_, err := s.Exec(updateJobMachineSQL, machineID, time.Now(), id)
+	_, err := s.Exec("UPDATE jobs SET machine_id = ?, updated_at = ? WHERE id = ?",
+		machineID,
+		time.Now(),
+		id,
+	)
 	return err
 }
 
-func (s Store) UpdateJobOutput(id int, exitCode int, stdout, stderr string) error {
-	updateJobOutputSQL := `UPDATE jobs SET exit_code = ?, stdout = ?, stderr = ?, updated_at = ? WHERE id = ?;`
-	_, err := s.Exec(updateJobOutputSQL, exitCode, stdout, stderr, time.Now(), id)
+func (s Store) SetJobResult(id int, exitCode int, stdout, stderr string) error {
+	_, err := s.Exec("UPDATE jobs SET exit_code = ?, stdout = ?, stderr = ?, updated_at = ? WHERE id = ?",
+		exitCode,
+		stdout,
+		stderr,
+		time.Now(),
+		id,
+	)
 	return err
 }
 
 func (s Store) FailJob(id int, exitCode int, stderr string) error {
-	updateJobStatusSQL := `UPDATE jobs SET status = 'failed', exit_code = ?, stderr = ?, updated_at = ?, finished_at = ? WHERE id = ?;`
-	_, err := s.Exec(updateJobStatusSQL, exitCode, stderr, time.Now(), time.Now(), id)
+	_, err := s.Exec("UPDATE jobs SET status = ?, exit_code = ?, stderr = ?, updated_at = ?, finished_at = ? WHERE id = ?",
+		"failed",
+		exitCode,
+		stderr,
+		time.Now(),
+		time.Now(),
+		id,
+	)
 	return err
 }
 
 func (s Store) CompleteJob(id int, exitCode int, stdout string) error {
-	updateJobStatusSQL := `UPDATE jobs SET status = 'completed', exit_code = ?, stdout = ?, updated_at = ?, finished_at = ? WHERE id = ?;`
-	_, err := s.Exec(updateJobStatusSQL, exitCode, stdout, time.Now(), time.Now(), id)
+	_, err := s.Exec("UPDATE jobs SET status = ?, exit_code = ?, stdout = ?, updated_at = ?, finished_at = ? WHERE id = ?",
+		"completed",
+		exitCode,
+		stdout,
+		time.Now(),
+		time.Now(),
+		id,
+	)
 	return err
+}
+
+func convertToStandardSchedule(raw RawSchedule) (*Schedule, error) {
+	var cfg fly.MachineConfig
+	if err := json.Unmarshal([]byte(raw.Config), &cfg); err != nil {
+		return nil, fmt.Errorf("error unmarshaling config: %w", err)
+	}
+
+	return &Schedule{
+		ID:       raw.ID,
+		Name:     raw.Name,
+		AppName:  raw.AppName,
+		Schedule: raw.Schedule,
+		Command:  raw.Command,
+		Region:   raw.Region,
+		Config:   cfg,
+	}, nil
 }

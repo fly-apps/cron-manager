@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/fly-apps/cron-manager/internal/cron"
 	"github.com/olekukonko/tablewriter"
@@ -47,7 +48,7 @@ var listCmd = &cobra.Command{
 	Args:  cobra.NoArgs,
 
 	Run: func(cmd *cobra.Command, args []string) {
-		store, err := cron.NewStore()
+		store, err := cron.NewStore(cron.StorePath)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
@@ -102,7 +103,7 @@ var processJobCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		store, err := cron.NewStore()
+		store, err := cron.NewStore(cron.StorePath)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
@@ -129,7 +130,7 @@ var listJobsCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		scheduleID := args[0]
 
-		store, err := cron.NewStore()
+		store, err := cron.NewStore(cron.StorePath)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
@@ -188,7 +189,7 @@ var showJobCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		jobID := args[0]
 
-		store, err := cron.NewStore()
+		store, err := cron.NewStore(cron.StorePath)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
@@ -223,8 +224,8 @@ var showJobCmd = &cobra.Command{
 				job.CreatedAt.Format("2006-01-02 15:04:05 UTC"),
 				job.UpdatedAt.Format("2006-01-02 15:04:05 UTC"),
 				finishedAt,
-				job.Stdout.String,
-				job.Stderr.String,
+				strings.Trim(job.Stdout.String, "\n"),
+				strings.Trim(job.Stderr.String, "\n"),
 			},
 		}
 
@@ -258,7 +259,7 @@ var syncCrontabCmd = &cobra.Command{
 	Args:  cobra.NoArgs,
 
 	Run: func(cmd *cobra.Command, args []string) {
-		store, err := cron.NewStore()
+		store, err := cron.NewStore(cron.StorePath)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
