@@ -5,33 +5,32 @@ Cron Manager is designed to enhance the way you manage Cron tasks on Fly.io.
 
 ## Getting started
 
-**Clone the project**
+Follow these steps to get your Cron Manager application up and running on Fly.io:
+
+**1. Clone the project**
 ```bash
 git clone git@github.com:fly-apps/cron-manager.git && cd cron-manager
 ```
 
-**Launch the project**
-
-No tweaks should be needed to get started.
-```bash
-fly launch
+**2. Create your app (Make sure the app name matches the fly.toml entry)**
+```
+fly apps create cron-manager
 ```
 
-**Set the FLY_API_TOKEN secret**
+**3. Set your **FLY_API_TOKEN** as a secret**
 ```bash
 fly secrets set FLY_API_TOKEN=$(fly auth token)
 ```
 
-If the Machine is in a `stopped` state at this point, you should go ahead and manually start it.
-
+**4. Deploy your app**
 ```bash
-fly machines start <machine-id>
+fly deploy .
 ```
 
 
 ## Managing Schedules
 
-Define and manage existing schedules using the schedules.json file. Here is an example format:
+Schedules can be defined using the `schedules.json` file.  Here's an example:
 
 ```json
 [
@@ -69,11 +68,12 @@ To view your registered schedules, you can use the `cm schedules list` command.
 
 ```
 fly ssh console --app-name <app-name>
-```
 
-```
 cm schedules list
+```
 
+Output example:
+```bash
 |----|---------------|-----------------------------------------------|-----------|--------|----------------|---------|
 | ID | TARGET APP    | IMAGE                                         | SCHEDULE  | REGION | RESTART POLICY | COMMAND |
 |----|----------------|-----------------------------------------------|-----------|--------|----------------|---------|
@@ -86,7 +86,12 @@ cm schedules list
 Each job execution is recorded within a local sqlite.  To view the job history of a specific schedule, run the following command:
 
 ```bash
+fly ssh console --app-name <app-name>
 cm jobs list 1
+```
+
+Output example:
+```bash
 |----|----------------|-----------|-----------|-------------------------|-------------------------|-------------------------|
 | ID | MACHINE ID     | STATUS    | EXIT CODE | CREATED AT              | UPDATED AT              | FINISHED AT             |
 |----|----------------|-----------|-----------|-------------------------|-------------------------|-------------------------|
