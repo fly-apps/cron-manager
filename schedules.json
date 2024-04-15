@@ -1,7 +1,7 @@
 [
     {
         "name": "uptime-check",
-        "app_name": "shaun-pg-flex",
+        "app_name": "my-app-name",
         "schedule": "* * * * *",
         "region": "iad",
         "command": "uptime",
@@ -23,7 +23,7 @@
     },
     {
         "name": "storage-check",
-        "app_name": "shaun-pg-flex",
+        "app_name": "my-app-name",
         "schedule": "0 * * * *",
         "region": "ord",
         "command": "df -h",
