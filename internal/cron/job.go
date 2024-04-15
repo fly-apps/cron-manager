@@ -9,14 +9,13 @@ import (
 )
 
 func ProcessJob(ctx context.Context, log *logrus.Logger, store *Store, scheduleID int) error {
-	// Resolve the associated schedule
 	schedule, err := store.FindSchedule(scheduleID)
 	if err != nil {
 		return err
 	}
 
 	logger := log.WithField("schedule-id", schedule.ID)
-	logger.Info("processing scheduled task...")
+	logger.Info("processing scheduled job...")
 
 	// Create a new job
 	jobID, err := store.CreateJob(schedule.ID)
@@ -49,7 +48,7 @@ func ProcessJob(ctx context.Context, log *logrus.Logger, store *Store, scheduleI
 	logger.Debugf("provisioning machine with image %s...", schedule.Config.Image)
 
 	// Provision a new machine to run the job
-	machine, err := client.MachineProvision(ctx, schedule, job)
+	machine, err := client.MachineProvision(ctx, logger, schedule, job)
 	if err != nil {
 		if machine != nil {
 			if err := client.MachineDestroy(ctx, machine); err != nil {

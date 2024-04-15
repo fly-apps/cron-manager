@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	fly "github.com/superfly/fly-go"
 	"github.com/superfly/fly-go/flaps"
 	"github.com/superfly/fly-go/tokens"
@@ -39,11 +40,13 @@ func NewClient(ctx context.Context, appName string, store *Store) (*Client, erro
 	}, nil
 }
 
-func (c *Client) MachineProvision(ctx context.Context, schedule *Schedule, job *Job) (*fly.Machine, error) {
+func (c *Client) MachineProvision(ctx context.Context, log *logrus.Entry, schedule *Schedule, job *Job) (*fly.Machine, error) {
 	machineConfig := fly.LaunchMachineInput{
 		Config: &schedule.Config,
 		Region: schedule.Region,
 	}
+
+	log.Infof("launching machine with image %s in region %s...", schedule.Config.Image, schedule.Region)
 
 	machine, err := c.flapsClient.Launch(ctx, machineConfig)
 	if err != nil {

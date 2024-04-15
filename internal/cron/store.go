@@ -87,9 +87,9 @@ type Job struct {
 }
 
 func (s Store) FindSchedule(id int) (*Schedule, error) {
-	var name, appName, schedule, command, config string
-	row := s.QueryRow("SELECT name, app_name, schedule, command, config FROM schedules WHERE id = ?", id)
-	if err := row.Scan(&name, &appName, &schedule, &command, &config); err != nil {
+	var name, region, appName, schedule, command, config string
+	row := s.QueryRow("SELECT name, region, app_name, schedule, command, config FROM schedules WHERE id = ?", id)
+	if err := row.Scan(&name, &region, &appName, &schedule, &command, &config); err != nil {
 		return &Schedule{}, err
 	}
 
@@ -102,6 +102,7 @@ func (s Store) FindSchedule(id int) (*Schedule, error) {
 	return &Schedule{
 		ID:       id,
 		Name:     name,
+		Region:   region,
 		AppName:  appName,
 		Schedule: schedule,
 		Command:  command,
@@ -111,9 +112,9 @@ func (s Store) FindSchedule(id int) (*Schedule, error) {
 
 func (s Store) FindScheduleByName(name string) (*Schedule, error) {
 	var id int
-	var appName, schedule, command, config string
-	row := s.QueryRow("SELECT id, app_name, schedule, command, config FROM schedules WHERE name = ?", name)
-	if err := row.Scan(&id, &appName, &schedule, &command, &config); err != nil {
+	var appName, schedule, command, region, config string
+	row := s.QueryRow("SELECT id, app_name, schedule, command, region, config FROM schedules WHERE name = ?", name)
+	if err := row.Scan(&id, &appName, &schedule, &command, &region, &config); err != nil {
 		return nil, err
 	}
 
@@ -129,6 +130,7 @@ func (s Store) FindScheduleByName(name string) (*Schedule, error) {
 		AppName:  appName,
 		Schedule: schedule,
 		Command:  command,
+		Region:   region,
 		Config:   cfg,
 	}, nil
 }

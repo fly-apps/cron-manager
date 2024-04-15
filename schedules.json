@@ -2,8 +2,8 @@
     {
         "name": "uptime-check",
         "app_name": "shaun-pg-flex",
-        "schedule": "0 * * * *",
-        "region": "ord",
+        "schedule": "* * * * *",
+        "region": "iad",
         "command": "uptime",
         "enabled": true,
         "config": {

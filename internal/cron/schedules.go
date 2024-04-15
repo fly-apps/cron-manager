@@ -20,8 +20,6 @@ func SyncSchedules(log *logrus.Logger, store *Store) error {
 		return fmt.Errorf("failed to open schedules file: %w", err)
 	}
 
-	log.Infof("schedules string: %s", string(schedulesBytes))
-
 	var schedules []Schedule
 	if err := json.Unmarshal(schedulesBytes, &schedules); err != nil {
 		return fmt.Errorf("failed to unmarshal schedules: %w", err)
