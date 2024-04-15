@@ -6,16 +6,15 @@ import (
 	"fmt"
 	"time"
 
+	migrate "github.com/rubenv/sql-migrate"
+	"github.com/sirupsen/logrus"
 	"github.com/superfly/fly-go"
 )
 
 const (
-	storePath = "/data/state.db?_busy_timeout=5000&_journal_mode=WAL"
+	migrationsPath = "/usr/local/share/migrations"
+	storePath      = "/data/state.db?_busy_timeout=5000&_journal_mode=WAL"
 )
-
-type Store struct {
-	*sql.DB
-}
 
 type Schedule struct {
 	ID       int               `json:"id"`
@@ -25,52 +24,6 @@ type Schedule struct {
 	Command  string            `json:"command"`
 	Region   string            `json:"region"`
 	Config   fly.MachineConfig `json:"config"`
-}
-
-func (s Store) SetupDB() error {
-	createSchedulesTableSQL := `CREATE TABLE IF NOT EXISTS schedules (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		name TEXT NOT NULL,
-		app_name TEXT NOT NULL,
-		schedule TEXT NOT NULL,
-		command TEXT NOT NULL,
-		region TEXT NOT NULL,
-		config TEXT NOT NULL,
-		UNIQUE(name)
-	);`
-	_, err := s.Exec(createSchedulesTableSQL)
-	if err != nil {
-		return err
-	}
-
-	createJobsTableSQL := `CREATE TABLE IF NOT EXISTS jobs (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		schedule_id INTEGER NOT NULL,
-		status TEXT CHECK(status IN ('pending', 'running', 'completed', 'failed')) NOT NULL DEFAULT 'pending',
-		machine_id TEXT,
-		exit_code INTEGER,
-		stdout TEXT,
-		stderr TEXT,
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		finished_at TIMESTAMP,
-		FOREIGN KEY(schedule_id) REFERENCES schedules(id)
-	);`
-	_, err = s.Exec(createJobsTableSQL)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func NewStore() (*Store, error) {
-	s, err := sql.Open("sqlite3", storePath)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Store{s}, nil
 }
 
 type Job struct {
@@ -84,6 +37,34 @@ type Job struct {
 	CreatedAt  time.Time      `json:"created_at"`
 	UpdatedAt  time.Time      `json:"updated_at"`
 	FinishedAt sql.NullTime   `json:"finished_at"`
+}
+
+type Store struct {
+	*sql.DB
+}
+
+func NewStore() (*Store, error) {
+	s, err := sql.Open("sqlite3", storePath)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Store{s}, nil
+}
+
+func (s Store) SetupDB(log *logrus.Logger) error {
+	migrations := &migrate.FileMigrationSource{
+		Dir: migrationsPath,
+	}
+
+	n, err := migrate.Exec(s.DB, "sqlite3", migrations, migrate.Up)
+	if err != nil {
+		return fmt.Errorf("error applying migrations: %w", err)
+	}
+
+	log.Infof("applied %d migrations", n)
+
+	return nil
 }
 
 func (s Store) FindSchedule(id int) (*Schedule, error) {

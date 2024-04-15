@@ -10,10 +10,11 @@ require (
 	github.com/superfly/fly-go v0.1.4
 )
 
+require github.com/go-gorp/gorp/v3 v3.1.0 // indirect
+
 require (
 	github.com/Khan/genqlient v0.6.0 // indirect
 	github.com/PuerkitoBio/rehttp v1.4.0 // indirect
-	github.com/adhocore/gronx v1.8.1
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-logr/logr v1.4.1 // indirect
@@ -24,6 +25,7 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
+	github.com/rubenv/sql-migrate v1.6.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/superfly/graphql v0.2.4 // indirect

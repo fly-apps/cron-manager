@@ -12,6 +12,7 @@ RUN CGO_ENABLED=1 GOOS=linux go build -ldflags '-extldflags "-static"' -v -o /fl
 
 COPY ./bin/* /fly/bin/
 COPY ./schedules.json /fly/schedules.json
+COPY ./migrations /fly/migrations
 
 # Start from Ubuntu 20.04 for the runtime stage
 FROM ubuntu:22.04
@@ -28,6 +29,7 @@ RUN apt-get update && \
 # Copy the built binary from the builder stage
 COPY --from=builder /fly/bin/* /usr/local/bin/
 COPY --from=builder /fly/schedules.json /usr/local/share/
+COPY --from=builder /fly/migrations /usr/local/share/migrations
 
 # Set the CMD to your application
 CMD ["start"]
