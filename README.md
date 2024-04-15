@@ -29,47 +29,64 @@ fly machines start <machine-id>
 ```
 
 
-## Creating Schedules
+## Managing Schedules
 
-**SSH into the Machine**
-```
-fly ssh console
+Define and manage existing schedules using the schedules.json file. Here is an example format:
+
+```json
+[
+    {
+        "name": "uptime-check",
+        "app_name": "my-app-name",
+        "schedule": "* * * * *",
+        "region": "iad",
+        "command": "uptime",
+        "config": {
+            "auto_destroy": true,
+            "disable_machine_autostart": true,
+            "guest": {
+                "cpu_kind": "shared",
+                "cpus": 1,
+                "memory_mb": 512
+            },
+            "image": "ghcr.io/livebook-dev/livebook:0.11.4",
+            "restart": {
+                "max_retries": 1,
+                "policy": "no"
+            }
+        }
+    }
+]
 ```
 
-**Use the `cm` cli to register your schedules**
+**Note: The full `config` spec can be found within the 
+[Machine API Spec](https://docs.machines.dev/#tag/machines/post/apps/{app_name}/machines).**
 
-```bash 
-cm schedules register \
-  --app-name shaun-pg-flex \
-  --image 'ghcr.io/livebook-dev/livebook:0.11.4' \
-  --schedule '* * * * *' \
-  --command 'uptime' \
-  --region 'ord'
-```
 
 ## Viewing Schedules
-To view your registered schedules, you can use the `cm schedules list` command.
+To view your registered schedules, you can use the `cm schedules list` command.  
 
-```bash 
-cm schedules list
-|----|---------------|--------------------------------------|-----------|--------|----------------|---------|
-| ID | TARGET APP    | IMAGE                                | SCHEDULE  | REGION | RESTART POLICY | COMMAND |
-|----|---------------|--------------------------------------|-----------|--------|----------------|---------|
-| 1  | shaun-pg-flex | ghcr.io/livebook-dev/livebook:0.11.4 | * * * * * | iad    | no             | uptime  |
-|----|---------------|--------------------------------------|-----------|--------|----------------|---------|
+
+```
+fly ssh console --app-name <app-name>
 ```
 
-## Unregistering Schedules
-In the event you would like to remove a specific schedule, you can simply run the `unregister` command while specifying the target schedule id.
-```bash
-cm schedules unregister 3
+```
+cm schedules list
+
+|----|---------------|-----------------------------------------------|-----------|--------|----------------|---------|
+| ID | TARGET APP    | IMAGE                                         | SCHEDULE  | REGION | RESTART POLICY | COMMAND |
+|----|----------------|-----------------------------------------------|-----------|--------|----------------|---------|
+| 1  | my-example-app | ghcr.io/livebook-dev/livebook:0.11.4          | * * * * * | iad    | no             | uptime  |
+| 2  | my-example-app | docker-hub-mirror.fly.io/library/nginx:latest | 0 * * * * | ord    | no             | df -h   |
+|----|----------------|-----------------------------------------------|-----------|--------|----------------|---------|
 ```
 
 ## Viewing Scheduled Jobs
 Each job execution is recorded within a local sqlite.  To view the job history of a specific schedule, run the following command:
 
 ```bash
-cm jobs list 3
+cm jobs list 1
 |----|----------------|-----------|-----------|-------------------------|-------------------------|-------------------------|
 | ID | MACHINE ID     | STATUS    | EXIT CODE | CREATED AT              | UPDATED AT              | FINISHED AT             |
 |----|----------------|-----------|-----------|-------------------------|-------------------------|-------------------------|
