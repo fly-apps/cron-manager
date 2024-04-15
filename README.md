@@ -62,8 +62,7 @@ Schedules are defined using the `schedules.json` file located within the project
   
 - **`command`**: The command that will be executed from the provisioned Machine associated with the job.
 
-- **`config`**: A nested object containing the jobs Machine configuration.
-[Machine API Spec](https://docs.machines.dev/#tag/machines/post/apps/{app_name}/machines).
+- **`config`**: A nested object containing the jobs Machine configuration. See the [Machine Config Spec](https://docs.machines.dev/#tag/machines/post/apps/{app_name}/machines) for more information.
 
 
 ### Example Schedule
