@@ -2,9 +2,10 @@ package cron
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
+
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -26,7 +27,7 @@ func InitializeCron(store *Store) error {
 	return nil
 }
 
-func SyncCrontab(store *Store) error {
+func SyncCrontab(store *Store, log *logrus.Logger) error {
 	schedules, err := store.ListSchedules()
 	if err != nil {
 		return fmt.Errorf("failed to list schedules: %w", err)

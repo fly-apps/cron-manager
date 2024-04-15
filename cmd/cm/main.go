@@ -76,12 +76,6 @@ var registerScheduleCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		// image, err := cmd.Flags().GetString("image")
-		// if err != nil {
-		// 	fmt.Println(err)
-		// 	os.Exit(1)
-		// }
-
 		schedule, err := cmd.Flags().GetString("schedule")
 		if err != nil {
 			fmt.Println(err)
@@ -133,7 +127,7 @@ var registerScheduleCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		if err := cron.SyncCrontab(store); err != nil {
+		if err := cron.SyncCrontab(store, log); err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
@@ -162,7 +156,7 @@ var unregisterScheduleCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		if err := cron.SyncCrontab(store); err != nil {
+		if err := cron.SyncCrontab(store, log); err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
@@ -395,7 +389,7 @@ var syncCrontabCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		if err := cron.SyncCrontab(store); err != nil {
+		if err := cron.SyncCrontab(store, log); err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}

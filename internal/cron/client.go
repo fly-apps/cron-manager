@@ -46,12 +46,17 @@ func (c *Client) MachineProvision(ctx context.Context, log *logrus.Entry, schedu
 		Region: schedule.Region,
 	}
 
-	log.Infof("launching machine with image %s in region %s...", schedule.Config.Image, schedule.Region)
-
 	machine, err := c.flapsClient.Launch(ctx, machineConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to launch machine: %w", err)
 	}
+
+	log.WithFields(logrus.Fields{
+		"schedule-id": schedule.ID,
+		"job-id":      job.ID,
+		"region":      schedule.Region,
+		"image":       schedule.Config.Image,
+	}).Info("provisioning machine...")
 
 	if err := c.store.UpdateJobMachine(job.ID, machine.ID); err != nil {
 		return machine, fmt.Errorf("failed to update job machine: %w", err)
