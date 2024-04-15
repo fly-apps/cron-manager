@@ -129,8 +129,8 @@ Job Details
 ```
 
 
-## Testing
-In the event you would like to trigger a Job off schedule for testing, you can do so with the `trigger` command.
+## Off-schedule Jobs
+In the event you would like to trigger a Job "off schedule" for testing, you can do so with the `trigger` command.
 
 ```bash
 cm jobs trigger <schedule-id>
