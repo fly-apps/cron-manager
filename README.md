@@ -6,7 +6,7 @@ Cron Manager is designed to enhance the way you manage Cron jobs on Fly.io.
 
 ### Isolated execution
 
-Each job runs in its own isolated machine, preventing issues such as configuration drift, accumulation of temporary files, or other residual effects that could impact subsequent job executions. This isolation ensures that the outcome of one job does not negatively influence xxanother, maintaining the integrity and reliability of each job.
+Each job runs in its own isolated machine, preventing issues such as configuration drift, accumulation of temporary files, or other residual effects that could impact subsequent job executions. This isolation ensures that the outcome of one job does not negatively influence another, maintaining the integrity and reliability of each job.
 
 ### Centralized Scheduling
 
