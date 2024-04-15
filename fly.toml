@@ -4,19 +4,11 @@
 #
 
 app = 'cron-manager'
-primary_region = 'qmx'
+primary_region = 'ord'
 
 [[mounts]]
   source = 'data'
   destination = '/data'
-
-[http_service]
-  internal_port = 5500
-  force_https = true
-  auto_stop_machines = false
-  auto_start_machines = true
-  min_machines_running = 1
-  processes = ['app']
 
 [[vm]]
   memory = '1gb'
