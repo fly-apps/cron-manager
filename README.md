@@ -108,7 +108,7 @@ Output example:
 |----|----------------|-----------|-----------|-------------------------|-------------------------|-------------------------|
 ```
 
-## Viewing a specific job
+## Viewing a Specific Job
 ```bash
 cm jobs show <job-id>
 ```
@@ -129,7 +129,7 @@ Job Details
 ```
 
 
-## Off-schedule Jobs
+## Triggering Off-schedule Jobs
 In the event you would like to trigger a Job "off schedule" for testing, you can do so with the `trigger` command.
 
 ```bash
