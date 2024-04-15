@@ -1,6 +1,24 @@
 # Cron Manager
 
-Cron Manager is designed to enhance the way you manage Cron jobs on Fly.io.
+Cron Manager is designed to enhance the way you manage Cron jobs on Fly.io by running each job execution within its own machine!
+
+## Key Features and Benefits
+
+### Isolated execution
+
+Each job runs in its own isolated machine, preventing issues such as configuration drift, accumulation of temporary files, or other residual effects that could impact subsequent job executions. This isolation ensures that the outcome of one job does not negatively influence another, maintaining the integrity and reliability of each task.
+
+### Centralized Scheduling
+
+Manage all your Cron jobs centrally with a simple JSON configuration. This approach removes the need to embed cron dependencies within each production environment, streamlining setup and modifications. The use of a version-controlled configuration file enhances maintainability and auditability of scheduling changes.
+
+### Simplified updates
+
+Machines dedicated to specific Cron jobs are ephemeral and do not require updates. Any modifications to the schedules.json file will automatically be applied the next time the machine is provisioned for a scheduled task. This eliminates the need for ongoing maintenance of job environments, resulting in a more efficient update process.
+
+### Enhanced Logs and Monitoring 
+
+Operating separate machines for each job greatly simplifies monitoring and auditing. This setup allows for straightforward tracking of the outcomes and logs of individual jobs, facilitating easier debugging, performance analysis, and compliance verification.
 
 
 ## Getting started
