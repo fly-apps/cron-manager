@@ -18,7 +18,7 @@ Machines dedicated to specific Cron jobs are ephemeral and do not require update
 
 ### Enhanced Logs and Monitoring 
 
-Operating separate machines for each job greatly simplifies monitoring and auditing. This setup allows for straightforward tracking of the outcomes and logs of individual jobs, facilitating easier debugging, performance analysis, and compliance verification.
+Operating separate machines for each job greatly simplifies monitoring and auditing. This setup allows for straightforward tracking of the outcomes and logs of individual jobs, facilitating easier debugging and performance analysis.
 
 
 ## Getting started
