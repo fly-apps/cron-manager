@@ -389,7 +389,7 @@ var syncCrontabCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		if err := cron.SyncCrontab(store, log); err != nil {
+		if err := cron.SyncSchedules(log, store); err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}

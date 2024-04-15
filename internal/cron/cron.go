@@ -27,7 +27,7 @@ func InitializeCron(store *Store) error {
 	return nil
 }
 
-func SyncCrontab(store *Store, log *logrus.Logger) error {
+func syncCrontab(store *Store, log *logrus.Logger) error {
 	schedules, err := store.ListSchedules()
 	if err != nil {
 		return fmt.Errorf("failed to list schedules: %w", err)
@@ -48,7 +48,7 @@ func SyncCrontab(store *Store, log *logrus.Logger) error {
 		return fmt.Errorf("failed to sync crontab: %w", err)
 	}
 
-	log.Printf("[INFO] Synced %d schedule(s) to crontab\n", len(schedules))
+	log.Printf("synced %d schedule(s) to crontab", len(schedules))
 
 	return nil
 }
