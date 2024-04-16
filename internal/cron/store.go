@@ -23,26 +23,28 @@ const (
 )
 
 type Schedule struct {
-	ID       int               `json:"id" db:"id"`
-	Name     string            `json:"name" db:"name"`
-	AppName  string            `json:"app_name" db:"app_name"`
-	Schedule string            `json:"schedule" db:"schedule"`
-	Command  string            `json:"command" db:"command"`
-	Region   string            `json:"region" db:"region"`
-	Enabled  bool              `json:"enabled" db:"enabled"`
-	Config   fly.MachineConfig `json:"config" db:"config"`
+	ID             int               `json:"id" db:"id"`
+	Name           string            `json:"name" db:"name"`
+	AppName        string            `json:"app_name" db:"app_name"`
+	Schedule       string            `json:"schedule" db:"schedule"`
+	Command        string            `json:"command" db:"command"`
+	CommandTimeout int               `json:"command_timeout" db:"command_timeout"`
+	Region         string            `json:"region" db:"region"`
+	Enabled        bool              `json:"enabled" db:"enabled"`
+	Config         fly.MachineConfig `json:"config" db:"config"`
 }
 
 // TODO - Remove this
 type RawSchedule struct {
-	ID       int    `json:"id" db:"id"`
-	Name     string `json:"name" db:"name"`
-	AppName  string `json:"app_name" db:"app_name"`
-	Schedule string `json:"schedule" db:"schedule"`
-	Command  string `json:"command" db:"command"`
-	Region   string `json:"region" db:"region"`
-	Enabled  bool   `json:"enabled" db:"enabled"`
-	Config   string `json:"config" db:"config"` // JSON string
+	ID             int    `json:"id" db:"id"`
+	Name           string `json:"name" db:"name"`
+	AppName        string `json:"app_name" db:"app_name"`
+	Schedule       string `json:"schedule" db:"schedule"`
+	Command        string `json:"command" db:"command"`
+	CommandTimeout int    `json:"command_timeout" db:"command_timeout"`
+	Region         string `json:"region" db:"region"`
+	Enabled        bool   `json:"enabled" db:"enabled"`
+	Config         string `json:"config" db:"config"` // JSON string
 }
 
 type Job struct {
@@ -186,11 +188,12 @@ func (s Store) CreateSchedule(sch Schedule) error {
 		return fmt.Errorf("error marshalling machine config: %w", err)
 	}
 
-	_, err = s.DB.Exec("INSERT INTO schedules (name, app_name, schedule, command, region, enabled, config) VALUES (?, ?, ?, ?, ?, ?, ?)",
+	_, err = s.DB.Exec("INSERT INTO schedules (name, app_name, schedule, command, command_timeout, region, enabled, config) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
 		sch.Name,
 		sch.AppName,
 		sch.Schedule,
 		sch.Command,
+		sch.CommandTimeout,
 		sch.Region,
 		sch.Enabled,
 		cfgBytes,
@@ -205,10 +208,11 @@ func (s Store) UpdateSchedule(sch Schedule) error {
 		return fmt.Errorf("error marshalling machine config: %w", err)
 	}
 
-	_, err = s.DB.Exec("UPDATE schedules SET app_name = ?, schedule = ?, command = ?, region = ?, enabled = ?, config = ? WHERE name = ?",
+	_, err = s.DB.Exec("UPDATE schedules SET app_name = ?, schedule = ?, command = ?, command_timeout = ?, region = ?, enabled = ?, config = ? WHERE name = ?",
 		sch.AppName,
 		sch.Schedule,
 		sch.Command,
+		sch.CommandTimeout,
 		sch.Region,
 		sch.Enabled,
 		cfgBytes,
@@ -310,13 +314,14 @@ func convertToStandardSchedule(raw RawSchedule) (*Schedule, error) {
 	}
 
 	return &Schedule{
-		ID:       raw.ID,
-		Name:     raw.Name,
-		AppName:  raw.AppName,
-		Schedule: raw.Schedule,
-		Command:  raw.Command,
-		Region:   raw.Region,
-		Enabled:  raw.Enabled,
-		Config:   cfg,
+		ID:             raw.ID,
+		Name:           raw.Name,
+		AppName:        raw.AppName,
+		Schedule:       raw.Schedule,
+		Command:        raw.Command,
+		CommandTimeout: raw.CommandTimeout,
+		Region:         raw.Region,
+		Enabled:        raw.Enabled,
+		Config:         cfg,
 	}, nil
 }

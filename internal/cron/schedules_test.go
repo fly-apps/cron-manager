@@ -22,6 +22,7 @@ func TestReadSchedulesFromFile(t *testing.T) {
         "schedule": "* * * * *",
         "region": "iad",
         "command": "uptime",
+		"command_timeout": 60,
         "enabled": true,
         "config": {
             "auto_destroy": true,
@@ -104,6 +105,10 @@ func TestReadSchedulesFromFile(t *testing.T) {
 		t.Errorf("expected command to be uptime, got %s", schedule.Command)
 	}
 
+	if schedule.CommandTimeout != 60 {
+		t.Errorf("expected command timeout to be 60, got %d", schedule.CommandTimeout)
+	}
+
 	if schedule.Config.Image != "ghcr.io/livebook-dev/livebook:0.11.4" {
 		t.Errorf("expected image to be ghcr.io/livebook-dev/livebook:0.11.4, got %s", schedule.Config.Image)
 	}
@@ -120,6 +125,10 @@ func TestReadSchedulesFromFile(t *testing.T) {
 
 	if schedule.Name != "test-check" {
 		t.Errorf("expected schedule name to be test-check, got %s", schedule.Name)
+	}
+
+	if schedule.CommandTimeout != 0 {
+		t.Errorf("expected command timeout to be 30, got %d", schedule.CommandTimeout)
 	}
 
 	if schedule.Enabled != false {

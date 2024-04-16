@@ -93,7 +93,7 @@ func ProcessJob(ctx context.Context, log *logrus.Logger, store *Store, scheduleI
 	logger.Debugf("executing command `%s` against machine...", schedule.Command)
 
 	// Execute the job
-	resp, err := client.MachineExec(ctx, schedule.Command, machine.ID, defaultExecTimeout)
+	resp, err := client.MachineExec(ctx, schedule.Command, machine.ID, schedule.CommandTimeout)
 	if err != nil {
 		return failJob(1, fmt.Errorf("failed to execute job: %w", err))
 	}
