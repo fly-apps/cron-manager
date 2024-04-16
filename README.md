@@ -68,7 +68,7 @@ Schedules are managed using the `schedules.json` file located within the project
 
 - **`command`**: The command that will be executed from the provisioned Machine associated with the job.
 
-- **`command_timeout`**: The total amount of time "in seconds" allowed for the command to execute.
+- **`command_timeout`**: The total amount of time "in seconds" allowed for the command to execute. Default: 30 seconds.
 
 - **`enabled`**: A convenience flag that allows you to enable or disable a given schedule. When set to false, the schedule will not trigger any new jobs, but any existing job data will remain unaltered.
 
