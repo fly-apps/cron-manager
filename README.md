@@ -16,7 +16,7 @@ Manage all your Cron jobs centrally with a simple JSON configuration. This appro
 
 Machines dedicated to specific Cron jobs are ephemeral and do not require updates. Any modifications to the schedules.json file will automatically be applied the next time the machine is provisioned for a scheduled job. This eliminates the need for ongoing maintenance of job environments, resulting in a more efficient update process.
 
-### Enhanced Logs and Monitoring 
+### Enhanced Logs and Monitoring
 
 Operating separate machines for each job greatly simplifies monitoring and auditing. This setup allows for straightforward tracking of the outcomes and logs of individual jobs, facilitating easier debugging and performance analysis.
 
@@ -54,14 +54,16 @@ Schedules are managed using the `schedules.json` file located within the project
 
 - **`name`**: A unique identifier for the schedule. This is used to differentiate new schedules from schedules that need to be updated or deleted.
   **WARNING: Changing the `name` value after it has been deployed will result in the schedule being deleted and recreated. All historical job references for that schedule will be lost!**
-  
+
 - **`app_name`**: The name of your existing application that the schedule is associated with.  Provisoned Machines associated with each Job will be associated with this App.
-  
+
 - **`schedule`**: The cron expression that defines how often the Job should run. The format follows the standard cron format (minute, hour, day of month, month, day of week).
 
 - **`region`**: The region where the scheduled job will execute.
-  
+
 - **`command`**: The command that will be executed from the provisioned Machine associated with the job.
+
+- **`command_timeout`**: The total amount of time "in seconds" allowed for the command to execute.
 
 - **`enabled`**: A convenience flag that allows you to enable or disable a given schedule. When set to false, the schedule will not trigger any new jobs, but any existing job data will remain unaltered.
 
@@ -77,6 +79,7 @@ Schedules are managed using the `schedules.json` file located within the project
         "schedule": "* * * * *",
         "region": "iad",
         "command": "uptime",
+        "command_timeout": 30,
         "enabled": true,
         "config": {
             "metadata": {
@@ -102,7 +105,7 @@ Schedules are managed using the `schedules.json` file located within the project
 
 
 ## Viewing Schedules
-To view your registered schedules, you can use the `cm schedules list` command.  
+To view your registered schedules, you can use the `cm schedules list` command.
 
 ```
 fly ssh console --app-name <app-name>
