@@ -149,6 +149,19 @@ func (s Store) FindJob(jobID string) (*Job, error) {
 	return &job, nil
 }
 
+func (s Store) FindJobByMachineID(machineID string) (*Job, error) {
+	var job Job
+	if err := s.DB.Get(&job, "SELECT * FROM jobs WHERE machine_id = ?", machineID); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+
+		return nil, fmt.Errorf("error getting job: %w", err)
+	}
+
+	return &job, nil
+}
+
 func (s Store) ListJobs(scheduleID string, limit int) ([]Job, error) {
 	var jobs []Job
 	if err := s.DB.Select(&jobs, "SELECT * FROM jobs WHERE schedule_id = ? ORDER BY id DESC LIMIT ?", scheduleID, limit); err != nil {

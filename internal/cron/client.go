@@ -66,14 +66,6 @@ func (c *Client) MachineProvision(ctx context.Context, log *logrus.Entry, schedu
 	return machine, nil
 }
 
-func (c *Client) WaitForStatus(ctx context.Context, machine *fly.Machine, targetStatus string) error {
-	if err := c.flapsClient.Wait(ctx, machine, targetStatus, 30*time.Second); err != nil {
-		return fmt.Errorf("failed to wait for machine to start: %w", err)
-	}
-
-	return nil
-}
-
 func (c *Client) MachineGet(ctx context.Context, machineID string) (*fly.Machine, error) {
 	return c.flapsClient.Get(ctx, machineID)
 }
@@ -88,11 +80,13 @@ func (c *Client) MachineDestroy(ctx context.Context, machine *fly.Machine) error
 		if strings.Contains(err.Error(), "404") {
 			return nil
 		}
-
 		return err
 	}
-
 	return nil
+}
+
+func (c *Client) MachineList(ctx context.Context, state string) ([]*fly.Machine, error) {
+	return c.flapsClient.List(ctx, state)
 }
 
 func (c *Client) MachineExec(ctx context.Context, cmd string, machineID string, timeout int) (*fly.MachineExecResponse, error) {
@@ -101,4 +95,12 @@ func (c *Client) MachineExec(ctx context.Context, cmd string, machineID string, 
 		Timeout: timeout,
 	}
 	return c.flapsClient.Exec(ctx, machineID, execReq)
+}
+
+func (c *Client) WaitForStatus(ctx context.Context, machine *fly.Machine, targetStatus string) error {
+	if err := c.flapsClient.Wait(ctx, machine, targetStatus, 30*time.Second); err != nil {
+		return fmt.Errorf("failed to wait for machine to start: %w", err)
+	}
+
+	return nil
 }

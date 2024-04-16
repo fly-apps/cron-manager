@@ -35,6 +35,7 @@ func SyncSchedules(store *Store, log *logrus.Logger) error {
 			}
 
 			log.Infof("created schedule %s", schedule.Name)
+
 			continue
 		}
 

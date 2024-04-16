@@ -3,7 +3,6 @@ package cron
 import (
 	"context"
 	"fmt"
-	"os/exec"
 
 	"github.com/sirupsen/logrus"
 	fly "github.com/superfly/fly-go"
@@ -13,112 +12,18 @@ const (
 	defaultExecTimeout = 30
 )
 
-// ReconcileJobs reconciles jobs that are flagged as pending or running at the time of startup.
-func ReconcileJobs(store *Store, log *logrus.Logger) error {
-	log.Info("reconciling jobs...")
-
-	// Initialize the flaps client
-	client, err := NewClient(context.Background(), "", store)
-	if err != nil {
-		return fmt.Errorf("failed to create client: %w", err)
-	}
-
-	// Query pending jobs
-	jobs, err := store.ListReconcilableJobs()
-	if err != nil {
-		return fmt.Errorf("failed to list reconciliable jobs: %w", err)
-	}
-
-	for _, job := range jobs {
-		switch job.Status {
-		case JobStatusPending:
-			log.WithField("job-id", job.ID).Info("reconciling pending job")
-			// If the job is pending and does not have a machine ID, it was interrupted during shutdown
-			// and can be marked as failed.
-			if job.MachineID.Valid {
-				if err := client.MachineDestroy(context.Background(), &fly.Machine{ID: job.MachineID.String}); err != nil {
-					log.WithError(err).Error("failed to reconcile machine tied to pending job")
-					continue
-				}
-			}
-
-			if err := store.FailJob(job.ID, -1, "job was interrupted on shutdown"); err != nil {
-				log.WithError(err).Error("failed to update job status")
-			}
-		case JobStatusRunning:
-			log.WithField("job-id", job.ID).Info("reconciling running job")
-
-			if !job.MachineID.Valid {
-				// this should never happen.
-				if err := store.FailJob(job.ID, -1, "job was interrupted on shutdown"); err != nil {
-					log.WithError(err).Error("failed to update job status")
-				}
-				continue
-			}
-
-			machine, err := client.MachineGet(context.Background(), job.MachineID.String)
-			// If the machine is not found, we can assume it was already destroyed.
-			if err != nil {
-				if exitErr, ok := err.(*exec.ExitError); ok {
-					log.WithError(err).Errorf("failed to get machine %+v", exitErr)
-					if exitErr.ExitCode() != 404 {
-						log.WithError(err).Errorf("failed to get machine %s", job.MachineID.String)
-						continue
-					}
-				}
-			}
-
-			if machine == nil {
-				if err := store.FailJob(job.ID, -1, "job was interrupted on shutdown"); err != nil {
-					log.WithError(err).Error("failed to reconcile job")
-				}
-				continue
-			}
-
-			if machine.State != fly.MachineStateStarted {
-				if err := client.MachineDestroy(context.Background(), machine); err != nil {
-					log.WithError(err).Errorf("failed to destroy machine %s", job.MachineID.String)
-				}
-
-				if err := store.FailJob(job.ID, -1, "job was interrupted on shutdown"); err != nil {
-					log.WithError(err).Error("failed to update job status")
-				}
-
-				continue
-			}
-
-			// If the machine is in a started state, we don't actually know whether the command was issued or not.
-			// For now, we will tear it down so long as the time since the last update is greater than the exec timeout.
-			// This is a bit of a hack, but it's the best we can do without a more sophisticated solution.
-			if job.UpdatedAt.Add(defaultExecTimeout).Before(job.UpdatedAt) {
-				if err := client.MachineDestroy(context.Background(), machine); err != nil {
-
-					log.WithError(err).Errorf("failed to destroy machine %s", job.MachineID.String)
-					// Continue so this can be retried.
-					continue
-				}
-
-				if err := store.FailJob(job.ID, -1, "job was interrupted on shutdown"); err != nil {
-					log.WithError(err).Error("failed to update job status")
-				}
-			}
-		}
-	}
-
-	if len(jobs) > 0 {
-		log.Infof("reconciled %d jobs", len(jobs))
-	} else {
-		log.Info("no jobs to reconcile")
-	}
-
-	return nil
-}
-
 func ProcessJob(ctx context.Context, log *logrus.Logger, store *Store, scheduleID int) error {
 	schedule, err := store.FindSchedule(scheduleID)
 	if err != nil {
 		return err
 	}
+
+	if schedule.Config.Metadata == nil {
+		schedule.Config.Metadata = make(map[string]string)
+	}
+	// Indicate the associated Machine was created by the cron manager
+	// This will make reconciliation a bit safer.
+	schedule.Config.Metadata["managed-by-cron-manager"] = "true"
 
 	logger := log.WithField("schedule-id", schedule.ID)
 	logger.Info("processing scheduled job...")

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -25,6 +26,8 @@ func main() {
 		log.SetLevel(level)
 	}
 
+	ctx := context.Background()
+
 	requiredPasswords := []string{"FLY_API_TOKEN"}
 	for _, str := range requiredPasswords {
 		if _, exists := os.LookupEnv(str); !exists {
@@ -45,7 +48,7 @@ func main() {
 		panic(fmt.Errorf("failed to sync crontab: %w", err))
 	}
 
-	if err := cron.ReconcileJobs(store, log); err != nil {
+	if err := cron.Reconcile(ctx, store, log); err != nil {
 		panic(fmt.Errorf("failed to reconcile jobs: %w", err))
 	}
 
