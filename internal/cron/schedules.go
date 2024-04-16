@@ -27,7 +27,14 @@ func SyncSchedules(store *Store, log *logrus.Logger) error {
 
 	// Track present schedules so we know which ones to delete
 	presentSchedules := make(map[string]struct{})
+
+	// Loop through schedules resolved from `schedules.json`
 	for _, schedule := range schedules {
+		// Set command timeout to default if not provided
+		if schedule.CommandTimeout == 0 {
+			schedule.CommandTimeout = defaultExecTimeout
+		}
+
 		record := findScheduleByName(existingSchedules, schedule.Name)
 		if record == nil {
 			if err := store.CreateSchedule(schedule); err != nil {

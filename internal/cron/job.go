@@ -25,14 +25,17 @@ func ProcessJob(ctx context.Context, log *logrus.Logger, store *Store, scheduleI
 	// This will make reconciliation a bit safer.
 	schedule.Config.Metadata["managed-by-cron-manager"] = "true"
 
-	logger := log.WithField("schedule-id", schedule.ID)
-	logger.Info("processing scheduled job...")
-
 	// Create a new job
 	jobID, err := store.CreateJob(schedule.ID)
 	if err != nil {
 		return fmt.Errorf("failed to create job: %w", err)
 	}
+
+	logger := log.WithFields(logrus.Fields{
+		"app-name":    schedule.AppName,
+		"schedule-id": schedule.ID,
+		"job-id":      jobID,
+	})
 
 	failJob := func(exitCode int, err error) error {
 		if err := store.FailJob(jobID, exitCode, err.Error()); err != nil {
@@ -48,15 +51,13 @@ func ProcessJob(ctx context.Context, log *logrus.Logger, store *Store, scheduleI
 		return failJob(1, fmt.Errorf("failed to find job: %w", err))
 	}
 
-	logger = logger.WithField("job-id", job.ID)
+	logger.Info("processing scheduled job...")
 
 	// Initialize client
 	client, err := NewFlapsClient(ctx, schedule.AppName, store)
 	if err != nil {
 		return failJob(1, fmt.Errorf("failed to create client: %w", err))
 	}
-
-	logger.Debugf("provisioning machine with image %s...", schedule.Config.Image)
 
 	// Provision a new machine to run the job
 	machine, err := client.MachineProvision(ctx, logger, schedule, job)
@@ -68,6 +69,8 @@ func ProcessJob(ctx context.Context, log *logrus.Logger, store *Store, scheduleI
 		}
 		return failJob(1, fmt.Errorf("failed to provision machine: %w", err))
 	}
+
+	logger = logger.WithField("machine-id", machine.ID)
 
 	// Ensure the machine gets torn down on exit
 	defer func() {
@@ -82,7 +85,6 @@ func ProcessJob(ctx context.Context, log *logrus.Logger, store *Store, scheduleI
 		return failJob(1, fmt.Errorf("failed to update job status: %w", err))
 	}
 
-	logger = logger.WithField("machine-id", machine.ID)
 	logger.Debug("waiting for machine to start...")
 
 	// Wait for the machine to start
@@ -90,10 +92,10 @@ func ProcessJob(ctx context.Context, log *logrus.Logger, store *Store, scheduleI
 		return failJob(1, fmt.Errorf("failed to wait for machine to start: %w", err))
 	}
 
-	logger.Debugf("executing command `%s` against machine...", schedule.Command)
+	logger.Debugf("executing command `%s` against machine with timeout %ds", schedule.Command, schedule.CommandTimeout)
 
 	// Execute the job
-	resp, err := client.MachineExec(ctx, schedule.Command, machine.ID, defaultExecTimeout)
+	resp, err := client.MachineExec(ctx, schedule.Command, machine.ID, schedule.CommandTimeout)
 	if err != nil {
 		return failJob(1, fmt.Errorf("failed to execute job: %w", err))
 	}

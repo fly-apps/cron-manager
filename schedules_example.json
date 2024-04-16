@@ -5,6 +5,7 @@
         "schedule": "* * * * *",
         "region": "iad",
         "command": "sleep 10",
+        "command_timeout": 30,
         "enabled": true,
         "config": {
             "metadata": {
@@ -30,6 +31,7 @@
         "schedule": "0 * * * *",
         "region": "ord",
         "command": "sleep 20",
+        "command_timeout": 60,
         "enabled": true,
         "config": {
             "metadata": {
