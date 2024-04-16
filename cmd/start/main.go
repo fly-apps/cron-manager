@@ -53,7 +53,8 @@ func main() {
 	}
 
 	if err := cron.SyncSchedules(store, log); err != nil {
-		panic(fmt.Errorf("failed to load schedules: %w", err))
+		log.Warnf("failed to sync schedules: %s", err)
+		log.Warnf("no schedule updates were made, please work to correct the issue re-deploy the application.")
 	}
 
 	if err := api.StartHttpServer(log); err != nil {

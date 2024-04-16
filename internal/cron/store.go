@@ -193,7 +193,6 @@ func (s Store) CreateSchedule(sch Schedule) error {
 		sch.Command,
 		sch.Region,
 		sch.Enabled,
-		sch.Config,
 		cfgBytes,
 	)
 

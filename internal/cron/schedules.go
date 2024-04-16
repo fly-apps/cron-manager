@@ -13,9 +13,10 @@ const (
 )
 
 func SyncSchedules(store *Store, log *logrus.Logger) error {
+	// Read schedules from file
 	schedules, err := readSchedulesFromFile(schedulesFilePath)
 	if err != nil {
-		return fmt.Errorf("failed to read schedules from file: %w", err)
+		return err
 	}
 
 	// Query existing schedules
@@ -26,7 +27,6 @@ func SyncSchedules(store *Store, log *logrus.Logger) error {
 
 	// Track present schedules so we know which ones to delete
 	presentSchedules := make(map[string]struct{})
-
 	for _, schedule := range schedules {
 		record := findScheduleByName(existingSchedules, schedule.Name)
 		if record == nil {
@@ -45,7 +45,6 @@ func SyncSchedules(store *Store, log *logrus.Logger) error {
 		}
 
 		log.Infof("updated schedule %s", schedule.Name)
-
 		presentSchedules[schedule.Name] = struct{}{}
 	}
 
@@ -82,6 +81,12 @@ func readSchedulesFromFile(schedulesFilePath string) ([]Schedule, error) {
 	schedulesBytes, err := os.ReadFile(schedulesFilePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open schedules file: %w", err)
+	}
+
+	// If the file is empty, return an empty slice
+	// This is expected behavior on initial launch, or if all schedules are being deleted
+	if len(schedulesBytes) == 0 {
+		return []Schedule{}, nil
 	}
 
 	var schedules []Schedule

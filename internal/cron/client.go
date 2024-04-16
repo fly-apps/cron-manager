@@ -17,13 +17,13 @@ const (
 	apiEndpoint = "https://api.machines.dev/v1"
 )
 
-type Client struct {
+type FlapsClient struct {
 	appName     string
 	flapsClient *flaps.Client
 	store       *Store
 }
 
-func NewClient(ctx context.Context, appName string, store *Store) (*Client, error) {
+func NewFlapsClient(ctx context.Context, appName string, store *Store) (*FlapsClient, error) {
 	flapsClient, err := flaps.NewWithOptions(ctx, flaps.NewClientOpts{
 		AppName: appName,
 		Tokens: &tokens.Tokens{
@@ -34,14 +34,14 @@ func NewClient(ctx context.Context, appName string, store *Store) (*Client, erro
 		return nil, fmt.Errorf("failed to create flaps client: %w", err)
 	}
 
-	return &Client{
+	return &FlapsClient{
 		appName:     appName,
 		flapsClient: flapsClient,
 		store:       store,
 	}, nil
 }
 
-func (c *Client) MachineProvision(ctx context.Context, log *logrus.Entry, schedule *Schedule, job *Job) (*fly.Machine, error) {
+func (c *FlapsClient) MachineProvision(ctx context.Context, log *logrus.Entry, schedule *Schedule, job *Job) (*fly.Machine, error) {
 	machineConfig := fly.LaunchMachineInput{
 		Config: &schedule.Config,
 		Region: schedule.Region,
@@ -66,11 +66,11 @@ func (c *Client) MachineProvision(ctx context.Context, log *logrus.Entry, schedu
 	return machine, nil
 }
 
-func (c *Client) MachineGet(ctx context.Context, machineID string) (*fly.Machine, error) {
+func (c *FlapsClient) MachineGet(ctx context.Context, machineID string) (*fly.Machine, error) {
 	return c.flapsClient.Get(ctx, machineID)
 }
 
-func (c *Client) MachineDestroy(ctx context.Context, machine *fly.Machine) error {
+func (c *FlapsClient) MachineDestroy(ctx context.Context, machine *fly.Machine) error {
 	input := fly.RemoveMachineInput{
 		ID:   machine.ID,
 		Kill: true,
@@ -85,11 +85,11 @@ func (c *Client) MachineDestroy(ctx context.Context, machine *fly.Machine) error
 	return nil
 }
 
-func (c *Client) MachineList(ctx context.Context, state string) ([]*fly.Machine, error) {
+func (c *FlapsClient) MachineList(ctx context.Context, state string) ([]*fly.Machine, error) {
 	return c.flapsClient.List(ctx, state)
 }
 
-func (c *Client) MachineExec(ctx context.Context, cmd string, machineID string, timeout int) (*fly.MachineExecResponse, error) {
+func (c *FlapsClient) MachineExec(ctx context.Context, cmd string, machineID string, timeout int) (*fly.MachineExecResponse, error) {
 	execReq := &fly.MachineExecRequest{
 		Cmd:     cmd,
 		Timeout: timeout,
@@ -97,7 +97,7 @@ func (c *Client) MachineExec(ctx context.Context, cmd string, machineID string, 
 	return c.flapsClient.Exec(ctx, machineID, execReq)
 }
 
-func (c *Client) WaitForStatus(ctx context.Context, machine *fly.Machine, targetStatus string) error {
+func (c *FlapsClient) WaitForStatus(ctx context.Context, machine *fly.Machine, targetStatus string) error {
 	if err := c.flapsClient.Wait(ctx, machine, targetStatus, 30*time.Second); err != nil {
 		return fmt.Errorf("failed to wait for machine to start: %w", err)
 	}

@@ -61,7 +61,7 @@ var listCmd = &cobra.Command{
 		}
 
 		table := tablewriter.NewWriter(os.Stdout)
-		table.SetHeader([]string{"ID", "Target App", "Image", "Schedule", "Region", "Command", "Enabled"})
+		table.SetHeader([]string{"ID", "Target App", "Image", "Schedule", "Region", "Enabled", "Command"})
 
 		// Set table alignment, borders, padding, etc. as needed
 		table.SetAlignment(tablewriter.ALIGN_LEFT)
@@ -80,8 +80,8 @@ var listCmd = &cobra.Command{
 				fmt.Sprint(schedule.Config.Image),
 				fmt.Sprint(schedule.Schedule),
 				fmt.Sprint(schedule.Region),
-				fmt.Sprint(schedule.Command),
 				fmt.Sprint(schedule.Enabled),
+				fmt.Sprint(schedule.Command),
 			})
 		}
 

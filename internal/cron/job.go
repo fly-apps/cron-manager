@@ -51,7 +51,7 @@ func ProcessJob(ctx context.Context, log *logrus.Logger, store *Store, scheduleI
 	logger = logger.WithField("job-id", job.ID)
 
 	// Initialize client
-	client, err := NewClient(ctx, schedule.AppName, store)
+	client, err := NewFlapsClient(ctx, schedule.AppName, store)
 	if err != nil {
 		return failJob(1, fmt.Errorf("failed to create client: %w", err))
 	}

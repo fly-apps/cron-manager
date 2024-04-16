@@ -36,7 +36,7 @@ func Reconcile(ctx context.Context, store *Store, log *logrus.Logger) error {
 
 func reconcileRunningMachines(ctx context.Context, store *Store, log *logrus.Logger, schedules []Schedule) error {
 	for _, schedule := range schedules {
-		client, err := NewClient(context.Background(), schedule.AppName, store)
+		client, err := NewFlapsClient(context.Background(), schedule.AppName, store)
 		if err != nil {
 			return fmt.Errorf("failed to create client: %w", err)
 		}
@@ -143,7 +143,7 @@ func reconcileJobs(store *Store, log *logrus.Logger) error {
 			}
 
 			// Initialize the flaps client
-			client, err := NewClient(context.Background(), schedule.AppName, store)
+			client, err := NewFlapsClient(context.Background(), schedule.AppName, store)
 			if err != nil {
 				return fmt.Errorf("failed to create client: %w", err)
 			}
