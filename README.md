@@ -76,6 +76,9 @@ Schedules are managed using the `schedules.json` file located within the project
         "region": "iad",
         "command": "uptime",
         "config": {
+            "metadata": {
+                "fly_process_group": "cron"
+            },
             "auto_destroy": true,
             "disable_machine_autostart": true,
             "guest": {
