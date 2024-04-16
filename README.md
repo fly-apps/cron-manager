@@ -63,6 +63,8 @@ Schedules are managed using the `schedules.json` file located within the project
   
 - **`command`**: The command that will be executed from the provisioned Machine associated with the job.
 
+- **`enabled`**: A convenience flag that allows you to enable or disable a given schedule. When set to false, the schedule will not trigger any new jobs, but any existing job data will remain unaltered.
+
 - **`config`**: A nested object containing the jobs Machine configuration. See the [Machine Config Spec](https://docs.machines.dev/#tag/machines/post/apps/{app_name}/machines) for more information.
 
 
@@ -75,6 +77,7 @@ Schedules are managed using the `schedules.json` file located within the project
         "schedule": "* * * * *",
         "region": "iad",
         "command": "uptime",
+        "enabled": true,
         "config": {
             "metadata": {
                 "fly_process_group": "cron"
@@ -109,12 +112,12 @@ cm schedules list
 
 Output example:
 ```bash
-|----|---------------|-----------------------------------------------|-----------|--------|----------------|---------|
-| ID | TARGET APP    | IMAGE                                         | SCHEDULE  | REGION | RESTART POLICY | COMMAND |
-|----|----------------|-----------------------------------------------|-----------|--------|----------------|---------|
-| 1  | my-example-app | ghcr.io/livebook-dev/livebook:0.11.4          | * * * * * | iad    | no             | uptime  |
-| 2  | my-example-app | docker-hub-mirror.fly.io/library/nginx:latest | 0 * * * * | ord    | no             | df -h   |
-|----|----------------|-----------------------------------------------|-----------|--------|----------------|---------|
+|----|------------------|-----------------------------------------------|-----------|--------|----------|---------|
+| ID | TARGET APP       | IMAGE                                         | SCHEDULE  | REGION | COMMAND  | ENABLED |
+|----|------------------|-----------------------------------------------|-----------|--------|----------|---------|
+| 1  | my-example-app   | ghcr.io/livebook-dev/livebook:0.11.4          | * * * * * | iad    | sleep 10 | true    |
+| 2  | my-example-app-2 | docker-hub-mirror.fly.io/library/nginx:latest | 0 * * * * | ord    | df -h    | false   |
+|----|------------------|-----------------------------------------------|-----------|--------|----------|---------|
 ```
 
 ## Viewing Scheduled Jobs
