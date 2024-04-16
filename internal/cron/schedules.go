@@ -25,12 +25,11 @@ func SyncSchedules(store *Store, log *logrus.Logger) error {
 	}
 
 	// Track present schedules so we know which ones to delete
-	activeSchedules := make(map[string]struct{})
+	presentSchedules := make(map[string]struct{})
 
 	for _, schedule := range schedules {
 		record := findScheduleByName(existingSchedules, schedule.Name)
 		if record == nil {
-			// If schedule does not exist, create it
 			if err := store.CreateSchedule(schedule); err != nil {
 				return fmt.Errorf("failed to create schedule: %w", err)
 			}
@@ -46,12 +45,12 @@ func SyncSchedules(store *Store, log *logrus.Logger) error {
 
 		log.Infof("updated schedule %s", schedule.Name)
 
-		activeSchedules[schedule.Name] = struct{}{}
+		presentSchedules[schedule.Name] = struct{}{}
 	}
 
 	// Delete schedules that are no longer present
 	for _, schedule := range existingSchedules {
-		if _, exists := activeSchedules[schedule.Name]; !exists {
+		if _, exists := presentSchedules[schedule.Name]; !exists {
 			idStr := fmt.Sprint(schedule.ID)
 			if err := store.DeleteSchedule(idStr); err != nil {
 				return fmt.Errorf("failed to delete schedule: %w", err)

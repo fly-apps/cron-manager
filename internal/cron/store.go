@@ -29,6 +29,7 @@ type Schedule struct {
 	Schedule string            `json:"schedule" db:"schedule"`
 	Command  string            `json:"command" db:"command"`
 	Region   string            `json:"region" db:"region"`
+	Enabled  bool              `json:"enabled" db:"enabled"`
 	Config   fly.MachineConfig `json:"config" db:"config"`
 }
 
@@ -40,6 +41,7 @@ type RawSchedule struct {
 	Schedule string `json:"schedule" db:"schedule"`
 	Command  string `json:"command" db:"command"`
 	Region   string `json:"region" db:"region"`
+	Enabled  bool   `json:"enabled" db:"enabled"`
 	Config   string `json:"config" db:"config"` // JSON string
 }
 
@@ -102,6 +104,24 @@ func (s Store) FindScheduleByName(name string) (*Schedule, error) {
 	return convertToStandardSchedule(rawSchedule)
 }
 
+func (s Store) ListEnabledSchedules() ([]Schedule, error) {
+	var rawSchedules []RawSchedule
+	if err := s.DB.Select(&rawSchedules, "SELECT * FROM schedules WHERE enabled = true"); err != nil {
+		return nil, fmt.Errorf("error getting schedules: %w", err)
+	}
+
+	var schedules []Schedule
+	for _, raw := range rawSchedules {
+		schedule, err := convertToStandardSchedule(raw)
+		if err != nil {
+			return nil, fmt.Errorf("error converting schedule: %w", err)
+		}
+		schedules = append(schedules, *schedule)
+	}
+
+	return schedules, nil
+}
+
 func (s Store) ListSchedules() ([]Schedule, error) {
 	var rawSchedules []RawSchedule
 	if err := s.DB.Select(&rawSchedules, "SELECT * FROM schedules"); err != nil {
@@ -153,12 +173,13 @@ func (s Store) CreateSchedule(sch Schedule) error {
 		return fmt.Errorf("error marshalling machine config: %w", err)
 	}
 
-	_, err = s.DB.Exec("INSERT INTO schedules (name, app_name, schedule, command, region, config) VALUES (?, ?, ?, ?, ?, ?)",
+	_, err = s.DB.Exec("INSERT INTO schedules (name, app_name, schedule, command, region, enabled, config) VALUES (?, ?, ?, ?, ?, ?, ?)",
 		sch.Name,
 		sch.AppName,
 		sch.Schedule,
 		sch.Command,
 		sch.Region,
+		sch.Enabled,
 		sch.Config,
 		cfgBytes,
 	)
@@ -172,11 +193,12 @@ func (s Store) UpdateSchedule(sch Schedule) error {
 		return fmt.Errorf("error marshalling machine config: %w", err)
 	}
 
-	_, err = s.DB.Exec("UPDATE schedules SET app_name = ?, schedule = ?, command = ?, region = ?, config = ? WHERE name = ?",
+	_, err = s.DB.Exec("UPDATE schedules SET app_name = ?, schedule = ?, command = ?, region = ?, enabled = ?, config = ? WHERE name = ?",
 		sch.AppName,
 		sch.Schedule,
 		sch.Command,
 		sch.Region,
+		sch.Enabled,
 		cfgBytes,
 		sch.Name,
 	)
@@ -282,6 +304,7 @@ func convertToStandardSchedule(raw RawSchedule) (*Schedule, error) {
 		Schedule: raw.Schedule,
 		Command:  raw.Command,
 		Region:   raw.Region,
+		Enabled:  raw.Enabled,
 		Config:   cfg,
 	}, nil
 }

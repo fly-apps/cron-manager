@@ -27,7 +27,7 @@ func InitializeCron(store *Store) error {
 }
 
 func syncCrontab(store *Store, log *logrus.Logger) error {
-	schedules, err := store.ListSchedules()
+	schedules, err := store.ListEnabledSchedules()
 	if err != nil {
 		return fmt.Errorf("failed to list schedules: %w", err)
 	}

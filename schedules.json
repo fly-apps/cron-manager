@@ -30,7 +30,7 @@
         "schedule": "0 * * * *",
         "region": "ord",
         "command": "df -h",
-        "enabled": true,
+        "enabled": false,
         "config": {
             "metadata": {
                 "fly_process_group": "cron"

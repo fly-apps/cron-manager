@@ -44,7 +44,7 @@ func TestReadSchedulesFromFile(t *testing.T) {
         "schedule": "* * * * *",
         "region": "iad",
         "command": "uptime",
-        "enabled": true,
+        "enabled": false,
         "config": {
             "auto_destroy": true,
             "disable_machine_autostart": true,
@@ -88,6 +88,10 @@ func TestReadSchedulesFromFile(t *testing.T) {
 		t.Errorf("expected app name to be shaun-pg-flex, got %s", schedule.AppName)
 	}
 
+	if schedule.Enabled != true {
+		t.Errorf("expected enabled to be true, got %t", schedule.Enabled)
+	}
+
 	if schedule.Schedule != "* * * * *" {
 		t.Errorf("expected schedule to be * * * * *, got %s", schedule.Schedule)
 	}
@@ -111,6 +115,17 @@ func TestReadSchedulesFromFile(t *testing.T) {
 	if schedule.Config.Guest.MemoryMB != 512 {
 		t.Errorf("expected memory to be 512, got %d", schedule.Config.Guest.MemoryMB)
 	}
+
+	schedule = schedules[1]
+
+	if schedule.Name != "test-check" {
+		t.Errorf("expected schedule name to be test-check, got %s", schedule.Name)
+	}
+
+	if schedule.Enabled != false {
+		t.Errorf("expected enabled to be false, got %t", schedule.Enabled)
+	}
+
 }
 
 // func TestSyncSchedules(t *testing.T) {

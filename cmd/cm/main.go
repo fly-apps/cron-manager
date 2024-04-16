@@ -43,8 +43,8 @@ func init() {
 
 var listCmd = &cobra.Command{
 	Use:   "list",
-	Short: "List all registered schedules",
-	Long:  `List all registered schedules`,
+	Short: "List all schedules",
+	Long:  `List all schedules`,
 	Args:  cobra.NoArgs,
 
 	Run: func(cmd *cobra.Command, args []string) {
@@ -61,7 +61,7 @@ var listCmd = &cobra.Command{
 		}
 
 		table := tablewriter.NewWriter(os.Stdout)
-		table.SetHeader([]string{"ID", "Target App", "Image", "Schedule", "Region", "Restart Policy", "Command"})
+		table.SetHeader([]string{"ID", "Target App", "Image", "Schedule", "Region", "Command", "Enabled"})
 
 		// Set table alignment, borders, padding, etc. as needed
 		table.SetAlignment(tablewriter.ALIGN_LEFT)
@@ -80,8 +80,8 @@ var listCmd = &cobra.Command{
 				fmt.Sprint(schedule.Config.Image),
 				fmt.Sprint(schedule.Schedule),
 				fmt.Sprint(schedule.Region),
-				fmt.Sprint(schedule.Config.Restart.Policy),
 				fmt.Sprint(schedule.Command),
+				fmt.Sprint(schedule.Enabled),
 			})
 		}
 
