@@ -15,6 +15,11 @@ import (
 const (
 	StorePath      = "/data/state.db?_busy_timeout=5000&_journal_mode=WAL"
 	MigrationsPath = "/usr/local/share/migrations"
+
+	JobStatusPending   = "pending"
+	JobStatusRunning   = "running"
+	JobStatusCompleted = "completed"
+	JobStatusFailed    = "failed"
 )
 
 type Schedule struct {
@@ -133,6 +138,15 @@ func (s Store) ListJobs(scheduleID string, limit int) ([]Job, error) {
 	return jobs, nil
 }
 
+func (s Store) ListReconcilableJobs() ([]Job, error) {
+	var jobs []Job
+	if err := s.DB.Select(&jobs, "SELECT * FROM jobs WHERE status IN (?,?)", JobStatusPending, JobStatusRunning); err != nil {
+		return nil, err
+	}
+
+	return jobs, nil
+}
+
 func (s Store) CreateSchedule(sch Schedule) error {
 	cfgBytes, err := json.Marshal(sch.Config)
 	if err != nil {
@@ -184,7 +198,7 @@ func (s Store) DeleteSchedule(id string) error {
 func (s Store) CreateJob(scheduleID int) (int, error) {
 	result, err := s.DB.Exec("INSERT INTO jobs (schedule_id, status, created_at, updated_at) VALUES ($1, $2, $3, $4)",
 		scheduleID,
-		"running",
+		JobStatusPending,
 		time.Now(),
 		time.Now(),
 	)
@@ -233,7 +247,7 @@ func (s Store) SetJobResult(id int, exitCode int, stdout, stderr string) error {
 
 func (s Store) FailJob(id int, exitCode int, stderr string) error {
 	_, err := s.Exec("UPDATE jobs SET status = ?, exit_code = ?, stderr = ?, updated_at = ?, finished_at = ? WHERE id = ?",
-		"failed",
+		JobStatusFailed,
 		exitCode,
 		stderr,
 		time.Now(),
@@ -245,7 +259,7 @@ func (s Store) FailJob(id int, exitCode int, stderr string) error {
 
 func (s Store) CompleteJob(id int, exitCode int, stdout string) error {
 	_, err := s.Exec("UPDATE jobs SET status = ?, exit_code = ?, stdout = ?, updated_at = ?, finished_at = ? WHERE id = ?",
-		"completed",
+		JobStatusCompleted,
 		exitCode,
 		stdout,
 		time.Now(),

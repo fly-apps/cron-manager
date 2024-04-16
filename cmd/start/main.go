@@ -45,6 +45,10 @@ func main() {
 		panic(fmt.Errorf("failed to sync crontab: %w", err))
 	}
 
+	if err := cron.ReconcileJobs(store, log); err != nil {
+		panic(fmt.Errorf("failed to reconcile jobs: %w", err))
+	}
+
 	if err := cron.SyncSchedules(store, log); err != nil {
 		panic(fmt.Errorf("failed to load schedules: %w", err))
 	}

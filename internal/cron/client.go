@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -73,6 +74,10 @@ func (c *Client) WaitForStatus(ctx context.Context, machine *fly.Machine, target
 	return nil
 }
 
+func (c *Client) MachineGet(ctx context.Context, machineID string) (*fly.Machine, error) {
+	return c.flapsClient.Get(ctx, machineID)
+}
+
 func (c *Client) MachineDestroy(ctx context.Context, machine *fly.Machine) error {
 	input := fly.RemoveMachineInput{
 		ID:   machine.ID,
@@ -80,16 +85,20 @@ func (c *Client) MachineDestroy(ctx context.Context, machine *fly.Machine) error
 	}
 
 	if err := c.flapsClient.Destroy(ctx, input, ""); err != nil {
-		return fmt.Errorf("failed to destroy machine: %w", err)
+		if strings.Contains(err.Error(), "404") {
+			return nil
+		}
+
+		return err
 	}
 
 	return nil
 }
 
-func (c *Client) MachineExec(ctx context.Context, schedule *Schedule, job *Job, machine *fly.Machine) (*fly.MachineExecResponse, error) {
+func (c *Client) MachineExec(ctx context.Context, cmd string, machineID string, timeout int) (*fly.MachineExecResponse, error) {
 	execReq := &fly.MachineExecRequest{
-		Cmd:     schedule.Command,
-		Timeout: 30,
+		Cmd:     cmd,
+		Timeout: timeout,
 	}
-	return c.flapsClient.Exec(ctx, machine.ID, execReq)
+	return c.flapsClient.Exec(ctx, machineID, execReq)
 }

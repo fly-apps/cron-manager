@@ -4,9 +4,12 @@
         "app_name": "shaun-pg-flex",
         "schedule": "* * * * *",
         "region": "iad",
-        "command": "uptime",
+        "command": "sleep 10",
         "enabled": true,
         "config": {
+            "metadata": {
+                "fly_process_group": "cron"
+            },
             "auto_destroy": true,
             "disable_machine_autostart": true,
             "guest": {
@@ -29,6 +32,9 @@
         "command": "df -h",
         "enabled": true,
         "config": {
+            "metadata": {
+                "fly_process_group": "cron"
+            },
             "auto_destroy": true,
             "disable_machine_autostart": true,
             "guest": {
