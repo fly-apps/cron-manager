@@ -22,9 +22,15 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Install runtime dependencies
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends libsqlite3-dev sqlite3 cron curl ca-certificates && \
+    apt-get install -y --no-install-recommends \
+    ca-certificates \
+    cron \
+    curl \
+    libsqlite3-dev \
+    sqlite3 && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
+
 
 # Copy the built binary from the builder stage
 COPY --from=builder /fly/bin/* /usr/local/bin/

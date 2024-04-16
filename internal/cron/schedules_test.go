@@ -67,8 +67,8 @@ func TestReadSchedulesFromFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer schedulesFile.Close()
-	defer os.Remove(schedulesFile.Name())
+	defer func() { _ = schedulesFile.Close() }()
+	defer func() { _ = os.Remove(schedulesFile.Name()) }()
 
 	schedules, err := readSchedulesFromFile(fmt.Sprintf("%s", schedulesFile.Name()))
 	if err != nil {
@@ -137,50 +137,6 @@ func TestReadSchedulesFromFile(t *testing.T) {
 
 }
 
-// func TestSyncSchedules(t *testing.T) {
-// 	rawSchedule := `[
-//     {
-//         "name": "uptime-check",
-//         "app_name": "shaun-pg-flex",
-//         "schedule": "* * * * *",
-//         "region": "iad",
-//         "command": "uptime",
-//         "enabled": true,
-//         "config": {
-//             "auto_destroy": true,
-//             "disable_machine_autostart": true,
-//             "guest": {
-//                 "cpu_kind": "shared",
-//                 "cpus": 1,
-//                 "memory_mb": 512
-//             },
-//             "image": "ghcr.io/livebook-dev/livebook:0.11.4",
-//             "restart": {
-//                 "max_retries": 1,
-//                 "policy": "no"
-//             }
-//         }
-//     }
-// ]`
-// 	schedulesFile, err := createSchedulesFile([]byte(rawSchedule))
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	defer schedulesFile.Close()
-// 	defer os.Remove(schedulesFile.Name())
-
-// 	store, err := NewStore(testStorePath)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-
-// 	err = SyncSchedules(store, logrus.New(), schedulesFile.Name())
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-
-// }
-
 func createSchedulesFile(schedules []byte) (*os.File, error) {
 	// Write schedules to a temp file
 	tmpFile, err := os.CreateTemp("../../test", "schedules.json")
@@ -189,8 +145,9 @@ func createSchedulesFile(schedules []byte) (*os.File, error) {
 	}
 
 	if _, err := tmpFile.Write(schedules); err != nil {
-		tmpFile.Close()
-		return nil, err
+		if err := tmpFile.Close(); err != nil {
+			return nil, err
+		}
 	}
 
 	return tmpFile, nil

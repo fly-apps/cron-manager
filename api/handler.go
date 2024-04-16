@@ -39,7 +39,7 @@ func StartHttpServer(logger *logrus.Logger) error {
 	r.Mount("/", Handler(logger))
 
 	w := logger.Writer()
-	defer w.Close()
+	defer func() { _ = w.Close() }()
 
 	server := &http.Server{
 		Handler:           r,
