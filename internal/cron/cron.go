@@ -14,7 +14,7 @@ const (
 	cronFilePath   = "/data/crontab"
 )
 
-func InitializeCron(store *Store) error {
+func InitializeCron() error {
 	if err := initializeLogFile(); err != nil {
 		return fmt.Errorf("failed to initialize log file: %w", err)
 	}

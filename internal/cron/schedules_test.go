@@ -1,7 +1,6 @@
 package cron
 
 import (
-	"fmt"
 	"os"
 	"testing"
 
@@ -70,7 +69,7 @@ func TestReadSchedulesFromFile(t *testing.T) {
 	defer func() { _ = schedulesFile.Close() }()
 	defer func() { _ = os.Remove(schedulesFile.Name()) }()
 
-	schedules, err := readSchedulesFromFile(fmt.Sprintf("%s", schedulesFile.Name()))
+	schedules, err := readSchedulesFromFile(schedulesFile.Name())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -139,15 +138,14 @@ func TestReadSchedulesFromFile(t *testing.T) {
 
 func createSchedulesFile(schedules []byte) (*os.File, error) {
 	// Write schedules to a temp file
-	tmpFile, err := os.CreateTemp("../../test", "schedules.json")
+	tmpFile, err := os.CreateTemp("./", "schedules.json")
 	if err != nil {
 		return nil, err
 	}
 
 	if _, err := tmpFile.Write(schedules); err != nil {
-		if err := tmpFile.Close(); err != nil {
-			return nil, err
-		}
+		tmpFile.Close()
+		return nil, err
 	}
 
 	return tmpFile, nil
