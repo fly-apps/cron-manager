@@ -144,7 +144,9 @@ func createSchedulesFile(schedules []byte) (*os.File, error) {
 	}
 
 	if _, err := tmpFile.Write(schedules); err != nil {
-		tmpFile.Close()
+		if err := tmpFile.Close(); err != nil {
+			return nil, err
+		}
 		return nil, err
 	}
 
