@@ -47,17 +47,15 @@ var listCmd = &cobra.Command{
 	Long:  `List all schedules`,
 	Args:  cobra.NoArgs,
 
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		store, err := cron.NewStore(cron.StorePath)
 		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+			return fmt.Errorf("failed to create store: %w", err)
 		}
 
 		schedules, err := store.ListSchedules()
 		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+			return fmt.Errorf("failed to list schedules: %w", err)
 		}
 
 		table := tablewriter.NewWriter(os.Stdout)
@@ -86,6 +84,8 @@ var listCmd = &cobra.Command{
 		}
 
 		table.Render()
+
+		return nil
 	},
 }
 
@@ -94,31 +94,24 @@ var processJobCmd = &cobra.Command{
 	Short: "Triggers a job for the specified schedule",
 	Long:  `Triggers a job for the specified schedules. `,
 	Args:  cobra.ExactArgs(1),
-
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		// Convert the schedule ID to an integer
 		scheduleID, err := strconv.Atoi(args[0])
 		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+			return fmt.Errorf("failed to convert schedule ID to integer: %w", err)
 		}
 
 		store, err := cron.NewStore(cron.StorePath)
 		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+			return fmt.Errorf("failed to create store: %w", err)
 		}
 
 		schedule, err := store.FindSchedule(scheduleID)
 		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+			return fmt.Errorf("failed to find schedule: %w", err)
 		}
 
-		if err := cron.ProcessJob(cmd.Context(), log, store, schedule.ID); err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
+		return cron.ProcessJob(cmd.Context(), log, store, schedule.ID)
 	},
 }
 var listJobsCmd = &cobra.Command{
@@ -127,32 +120,28 @@ var listJobsCmd = &cobra.Command{
 	Long:  `Lists all jobs for the specified schedule`,
 	Args:  cobra.ExactArgs(1),
 
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		scheduleID := args[0]
 
 		store, err := cron.NewStore(cron.StorePath)
 		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+			return fmt.Errorf("failed to create store: %w", err)
 		}
 
 		jobs, err := store.ListJobs(scheduleID, 10)
 		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+			return fmt.Errorf("failed to list jobs: %w", err)
 		}
 
 		table := tablewriter.NewWriter(os.Stdout)
 		table.SetHeader([]string{"ID", "Machine ID", "Status", "Exit Code", "Created At", "Updated At", "Finished At"})
-
-		// Set table alignment, borders, padding, etc. as needed
 		table.SetAlignment(tablewriter.ALIGN_LEFT)
-		table.SetBorder(true) // Set to false to hide borders
+		table.SetBorder(true)
 		table.SetCenterSeparator("|")
 		table.SetColumnSeparator("|")
 		table.SetRowSeparator("-")
 		table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
-		table.SetHeaderLine(true) // Enable header line
+		table.SetHeaderLine(true)
 		table.SetAutoWrapText(false)
 
 		for _, j := range jobs {
@@ -177,6 +166,8 @@ var listJobsCmd = &cobra.Command{
 		}
 
 		table.Render()
+
+		return nil
 	},
 }
 
@@ -185,20 +176,17 @@ var showJobCmd = &cobra.Command{
 	Short: "Show job details",
 	Long:  `Show job details`,
 	Args:  cobra.ExactArgs(1),
-
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		jobID := args[0]
 
 		store, err := cron.NewStore(cron.StorePath)
 		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+			return fmt.Errorf("failed to create store: %w", err)
 		}
 
 		job, err := store.FindJob(jobID)
 		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+			return fmt.Errorf("failed to find job: %w", err)
 		}
 
 		table := tablewriter.NewWriter(os.Stdout)
@@ -249,6 +237,8 @@ var showJobCmd = &cobra.Command{
 			}
 			table.Render()
 		}
+
+		return nil
 	},
 }
 
@@ -258,18 +248,18 @@ var syncCrontabCmd = &cobra.Command{
 	Long:  `Syncs sqlite schedules with crontab`,
 	Args:  cobra.NoArgs,
 
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		store, err := cron.NewStore(cron.StorePath)
 		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+			return fmt.Errorf("failed to create store: %w", err)
 		}
 
 		if err := cron.SyncSchedules(store, log); err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+			return fmt.Errorf("failed to sync crontab: %w", err)
 		}
 
 		fmt.Println("Crontab synced successfully")
+
+		return nil
 	},
 }
