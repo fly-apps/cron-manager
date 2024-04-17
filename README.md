@@ -35,11 +35,6 @@ git clone git@github.com:fly-apps/cron-manager.git && cd cron-manager
 fly apps create <new app name>
 ```
 
-**Set app name in fly.toml**
-```toml
-app = '<new app name>'
-```
-
 **Set your **FLY_API_TOKEN** as a secret**
 ```bash
 fly secrets set FLY_API_TOKEN=$(fly auth token)
