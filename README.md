@@ -107,9 +107,7 @@ Schedules are managed using the `schedules.json` file located within the project
 ## Viewing Schedules
 To view your registered schedules, you can use the `cm schedules list` command.
 
-```
-fly ssh console --app-name <app-name>
-
+```bash
 cm schedules list
 ```
 
@@ -124,11 +122,9 @@ Output example:
 ```
 
 ## Viewing Scheduled Jobs
-Each job execution is recorded within a local sqlite.  To view the job history of a specific schedule, run the following command:
+Each job execution is recorded within a local sqlite. To view the job history of a specific schedule, ssh into the Machine and run the following:
 
 ```bash
-fly ssh console --app-name <app-name>
-
 cm jobs list <schedule-id>
 ```
 
@@ -157,7 +153,6 @@ cm jobs show <job-id>
 
 Output example:
 ```
-cm jobs show 14
 Job Details
   ID          = 30
   Status      = completed
