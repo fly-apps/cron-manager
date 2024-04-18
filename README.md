@@ -161,7 +161,7 @@ Job Details
   Created At  = 2024-04-15 14:34:01 UTC
   Updated At  = 2024-04-15 14:34:03 UTC
   Finished At = 2024-04-15 14:34:03 UTC
-  Stdout      = 14:34:03 up 0 min,  0 user,  load average: 0.00, 0.00, 0.00
+  Stdout      = 
   Stderr      =
 ```
 
