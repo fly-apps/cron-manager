@@ -30,9 +30,9 @@ func ProcessJob(ctx context.Context, log *logrus.Logger, store *Store, scheduleI
 	}
 
 	logger := log.WithFields(logrus.Fields{
-		"app-name":    schedule.AppName,
-		"schedule-id": schedule.ID,
-		"job-id":      job.ID,
+		"app-name": schedule.AppName,
+		"schedule": schedule.Name,
+		"job-id":   job.ID,
 	})
 
 	failJob := func(exitCode int, err error) error {
@@ -43,7 +43,7 @@ func ProcessJob(ctx context.Context, log *logrus.Logger, store *Store, scheduleI
 		return err
 	}
 
-	logger.Info("preparing scheduled job...")
+	logger.Info("preparing job...")
 
 	// Initialize client
 	client, err := NewFlapsClient(ctx, schedule.AppName, store)
@@ -70,11 +70,7 @@ func ProcessJob(ctx context.Context, log *logrus.Logger, store *Store, scheduleI
 		return failJob(1, fmt.Errorf("failed to update job status: %w", err))
 	}
 
-	logger.Infof("processing scheduled job...")
-
-	// if err := client.WaitForStatus(ctx, machine, fly.MachineStateStarted); err != nil {
-	// 	return failJob(1, fmt.Errorf("failed to wait for machine to start: %w", err))
-	// }
+	logger.Infof("running job...")
 
 	return nil
 }

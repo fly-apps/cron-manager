@@ -19,8 +19,6 @@ func MonitorActiveJobs(ctx context.Context, store *Store, log *logrus.Logger) er
 	ticker := time.NewTicker(monitorFrequency)
 	defer ticker.Stop()
 
-	log.Info("Starting job monitor...")
-
 	for {
 		select {
 		case <-ctx.Done():
