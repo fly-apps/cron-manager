@@ -88,7 +88,7 @@ func evaluateJob(ctx context.Context, logger *logrus.Logger, store *Store, job J
 
 	startEvent := findStartEvent(machine)
 	if startEvent == nil {
-		log.Infof("machine %s has not started yet", machine.ID)
+		log.Debugf("machine %s has not started yet", machine.ID)
 		return nil
 	}
 
