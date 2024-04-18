@@ -30,7 +30,11 @@
         "app_name": "shaun-pg-flex",
         "schedule": "* * * * *",
         "region": "iad",
+<<<<<<< Updated upstream
         "command": "sleep 30",
+=======
+        "command": "sleep 35",
+>>>>>>> Stashed changes
         "command_timeout": 30,
         "enabled": true,
         "config": {

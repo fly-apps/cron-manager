@@ -41,10 +41,17 @@ func MonitorActiveJobs(ctx context.Context, store *Store, log *logrus.Logger) er
 				}
 
 				log := log.WithFields(logrus.Fields{
+<<<<<<< Updated upstream
 					"app-name":    schedule.AppName,
 					"schedule-id": schedule.ID,
 					"job-id":      job.ID,
 					"machine-id":  job.MachineID.String,
+=======
+					"app-name":   schedule.AppName,
+					"schedule":   schedule.Name,
+					"job-id":     job.ID,
+					"machine-id": job.MachineID.String,
+>>>>>>> Stashed changes
 				})
 
 				// Initialize the flaps client
@@ -72,6 +79,19 @@ func MonitorActiveJobs(ctx context.Context, store *Store, log *logrus.Logger) er
 				}
 
 				log.Debugf("monitoring scheduled job")
+<<<<<<< Updated upstream
+=======
+
+				startEvent := findStartEvent(machine)
+				if startEvent == nil {
+					log.Infof("machine %s has not started yet", machine.ID)
+					continue
+				}
+
+				// Calculate the execution time
+				executionTime := time.Now().Sub(startEvent.Time()).Seconds()
+				log = log.WithField("execution-time", executionTime)
+>>>>>>> Stashed changes
 
 				switch machine.State {
 				case fly.MachineStateDestroyed:
@@ -96,11 +116,15 @@ func MonitorActiveJobs(ctx context.Context, store *Store, log *logrus.Logger) er
 							if err := store.CompleteJob(job.ID, exitCode, ""); err != nil {
 								log.WithError(err).Errorf("failed to update job %d status", job.ID)
 							}
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
 							log.Infof("scheduled job completed successfully")
 						}
 					}
 				default:
+<<<<<<< Updated upstream
 					// Calculate the total execution time
 					executionTime := time.Now().Sub(job.UpdatedAt).Seconds()
 
@@ -111,6 +135,13 @@ func MonitorActiveJobs(ctx context.Context, store *Store, log *logrus.Logger) er
 							schedule.CommandTimeout,
 							executionTime,
 						)
+=======
+					// Machine is in a non-destroyed state, verify run time hasn't exceeded the command timeout
+					if executionTime > float64(schedule.CommandTimeout) {
+						err := fmt.Sprintf("machine `%s` exceeded the command timeout of %d seconds.",
+							machine.ID,
+							schedule.CommandTimeout)
+>>>>>>> Stashed changes
 
 						log.Warnf(err)
 
@@ -138,6 +169,20 @@ func findExitEvent(machine *fly.Machine) *fly.MachineEvent {
 
 	for _, event := range machine.Events {
 		if event.Type == "exit" {
+			return event
+		}
+	}
+
+	return nil
+}
+
+func findStartEvent(machine *fly.Machine) *fly.MachineEvent {
+	if len(machine.Events) == 0 {
+		return nil
+	}
+
+	for _, event := range machine.Events {
+		if event.Type == "start" {
 			return event
 		}
 	}
