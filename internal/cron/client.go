@@ -89,18 +89,6 @@ func (c *FlapsClient) MachineList(ctx context.Context, state string) ([]*fly.Mac
 	return c.flapsClient.List(ctx, state)
 }
 
-func (c *FlapsClient) MachineExec(ctx context.Context, cmd string, machineID string, timeout int) (*fly.MachineExecResponse, error) {
-	execReq := &fly.MachineExecRequest{
-		Cmd:     cmd,
-		Timeout: timeout,
-	}
-	return c.flapsClient.Exec(ctx, machineID, execReq)
-}
-
 func (c *FlapsClient) WaitForStatus(ctx context.Context, machine *fly.Machine, targetStatus string) error {
-	if err := c.flapsClient.Wait(ctx, machine, targetStatus, 30*time.Second); err != nil {
-		return fmt.Errorf("failed to wait for machine to start: %w", err)
-	}
-
-	return nil
+	return c.flapsClient.Wait(ctx, machine, targetStatus, 30*time.Second)
 }

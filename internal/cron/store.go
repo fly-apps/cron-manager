@@ -173,6 +173,15 @@ func (s Store) ListJobs(scheduleID string, limit int) ([]Job, error) {
 	return jobs, nil
 }
 
+func (s Store) ListJobsByStatus(status string) ([]Job, error) {
+	var jobs []Job
+	if err := s.DB.Select(&jobs, "SELECT * FROM jobs WHERE status = ?", status); err != nil {
+		return nil, fmt.Errorf("error getting jobs: %w", err)
+	}
+
+	return jobs, nil
+}
+
 func (s Store) ListReconcilableJobs() ([]Job, error) {
 	var jobs []Job
 	if err := s.DB.Select(&jobs, "SELECT * FROM jobs WHERE status IN (?,?)", JobStatusPending, JobStatusRunning); err != nil {
@@ -233,7 +242,7 @@ func (s Store) DeleteSchedule(id string) error {
 	return err
 }
 
-func (s Store) CreateJob(scheduleID int) (int, error) {
+func (s Store) CreateJob(scheduleID int) (*Job, error) {
 	result, err := s.DB.Exec("INSERT INTO jobs (schedule_id, status, created_at, updated_at) VALUES ($1, $2, $3, $4)",
 		scheduleID,
 		JobStatusPending,
@@ -242,16 +251,21 @@ func (s Store) CreateJob(scheduleID int) (int, error) {
 	)
 
 	if err != nil {
-		return 0, fmt.Errorf("error executing insert job SQL: %w", err)
+		return nil, fmt.Errorf("error executing insert job SQL: %w", err)
 	}
 
 	// Get the last inserted ID
 	id, err := result.LastInsertId()
 	if err != nil {
-		return 0, fmt.Errorf("error getting last insert ID: %w", err)
+		return nil, fmt.Errorf("error getting last insert ID: %w", err)
 	}
 
-	return int(id), nil
+	job, err := s.FindJob(fmt.Sprint(id))
+	if err != nil {
+		return nil, fmt.Errorf("error finding job: %w", err)
+	}
+
+	return job, nil
 }
 
 func (s Store) UpdateJobStatus(id int, status string) error {
@@ -272,8 +286,9 @@ func (s Store) UpdateJobMachine(id int, machineID string) error {
 	return err
 }
 
-func (s Store) SetJobResult(id int, exitCode int, stdout, stderr string) error {
-	_, err := s.Exec("UPDATE jobs SET exit_code = ?, stdout = ?, stderr = ?, updated_at = ? WHERE id = ?",
+func (s Store) SetJobResult(id int, status string, exitCode int, stdout, stderr string) error {
+	_, err := s.Exec("UPDATE jobs SET status = ?, exit_code = ?, stdout = ?, stderr = ?, updated_at = ? WHERE id = ?",
+		status,
 		exitCode,
 		stdout,
 		stderr,

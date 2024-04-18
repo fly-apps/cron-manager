@@ -48,9 +48,12 @@ func main() {
 		panic(fmt.Errorf("failed to sync crontab: %w", err))
 	}
 
-	if err := cron.Reconcile(ctx, store, log); err != nil {
-		panic(fmt.Errorf("failed to reconcile jobs: %w", err))
-	}
+	// TODO - Supervise this.
+	go func() {
+		if err := cron.MonitorActiveJobs(ctx, store, log); err != nil {
+			panic(fmt.Errorf("failed to monitor active jobs: %w", err))
+		}
+	}()
 
 	if err := cron.SyncSchedules(store, log); err != nil {
 		log.Warnf("failed to sync schedules: %s", err)

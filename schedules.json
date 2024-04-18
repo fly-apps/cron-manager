@@ -1,0 +1,28 @@
+[
+    {
+        "name": "node-check",
+        "app_name": "shaun-pg-flex",
+        "schedule": "* * * * *",
+        "region": "iad",
+        "command": "curl http://shaun-pg-flex.internal:5500/flycheck/pg --fail",
+        "command_timeout": 60,
+        "enabled": true,
+        "config": {
+            "metadata": {
+                "fly_process_group": "cron"
+            },
+            "auto_destroy": true,
+            "disable_machine_autostart": true,
+            "guest": {
+                "cpu_kind": "shared",
+                "cpus": 1,
+                "memory_mb": 512
+            },
+            "image": "flyio/postgres-flex:15.6",
+            "restart": {
+                "max_retries": 1,
+                "policy": "no"
+            }
+        }
+    }
+]

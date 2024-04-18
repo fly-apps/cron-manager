@@ -11,6 +11,11 @@ require (
 )
 
 require (
+	github.com/alessio/shellescape v1.4.2 // indirect
+	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
+)
+
+require (
 	github.com/go-gorp/gorp/v3 v3.1.0 // indirect
 	github.com/jmoiron/sqlx v1.3.5
 )

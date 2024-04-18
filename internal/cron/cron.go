@@ -19,11 +19,7 @@ func InitializeCron(store *Store) error {
 		return fmt.Errorf("failed to initialize log file: %w", err)
 	}
 
-	if err := startDaemon(); err != nil {
-		return fmt.Errorf("failed to start daemon: %w", err)
-	}
-
-	return nil
+	return startDaemon()
 }
 
 func syncCrontab(store *Store, log *logrus.Logger) error {
