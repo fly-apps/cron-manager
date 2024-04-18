@@ -84,17 +84,17 @@ func evaluateJob(ctx context.Context, logger *logrus.Logger, store *Store, job J
 		}
 	}
 
-	log.Debugf("monitoring scheduled job")
+	log.Debugf("Monitoring job")
 
 	startEvent := findStartEvent(machine)
 	if startEvent == nil {
-		log.Debugf("machine %s has not started yet", machine.ID)
+		log.Debugf("Machine %s has not started yet", machine.ID)
 		return nil
 	}
 
 	switch machine.State {
 	case fly.MachineStateDestroyed:
-		log.Debugf("machine %s is destroyed", machine.ID)
+		log.Debugf("Machine %s is destroyed", machine.ID)
 
 		log = log.WithField("execution-time", fmt.Sprintf("%.2fs", calculateExecutionTime(machine)))
 
@@ -111,12 +111,12 @@ func evaluateJob(ctx context.Context, logger *logrus.Logger, store *Store, job J
 				if err := store.FailJob(job.ID, exitCode, ""); err != nil {
 					log.WithError(err).Errorf("failed to update job %d status", job.ID)
 				}
-				log.Infof("scheduled job failed with exit code %d", exitCode)
+				log.Infof("Job failed with exit code %d", exitCode)
 			} else {
 				if err := store.CompleteJob(job.ID, exitCode, ""); err != nil {
 					log.WithError(err).Errorf("failed to update job %d status", job.ID)
 				}
-				log.Infof("scheduled job completed successfully")
+				log.Infof("Job completed successfully")
 			}
 		}
 	default:
@@ -140,7 +140,7 @@ func evaluateJob(ctx context.Context, logger *logrus.Logger, store *Store, job J
 			}
 		}
 
-		log.Debugf("machine is in state %s", machine.State)
+		log.Debugf("Machine is in state %s", machine.State)
 	}
 
 	return nil

@@ -41,7 +41,7 @@ func SyncSchedules(store *Store, log *logrus.Logger) error {
 				return fmt.Errorf("failed to create schedule: %w", err)
 			}
 
-			log.Infof("created schedule %s", schedule.Name)
+			log.Infof("Created schedule %s", schedule.Name)
 
 			continue
 		}
@@ -51,7 +51,7 @@ func SyncSchedules(store *Store, log *logrus.Logger) error {
 			return fmt.Errorf("failed to update schedule: %w", err)
 		}
 
-		log.Infof("updated schedule %s", schedule.Name)
+		log.Infof("Updated schedule %s", schedule.Name)
 		presentSchedules[schedule.Name] = struct{}{}
 	}
 

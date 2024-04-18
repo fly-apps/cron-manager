@@ -37,7 +37,7 @@ func syncCrontab(store *Store, log *logrus.Logger) error {
 		return fmt.Errorf("failed to sync crontab: %w", err)
 	}
 
-	log.Printf("synced %d schedule(s) to crontab", len(schedules))
+	log.Printf("Synced %d schedule(s) to crontab", len(schedules))
 
 	return nil
 }

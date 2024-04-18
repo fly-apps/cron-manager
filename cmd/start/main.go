@@ -44,8 +44,8 @@ func main() {
 	}
 
 	if err := cron.SyncSchedules(store, log); err != nil {
-		log.Warnf("failed to sync schedules: %s", err)
-		log.Warnf("no schedule updates were made, please work to correct the issue re-deploy the application.")
+		log.Warnf("Failed to sync schedules: %s", err)
+		log.Warnf("No schedule updates were made, please work to correct the issue re-deploy the application.")
 	}
 
 	svisor := supervisor.New("cron-manager", 5*time.Minute)

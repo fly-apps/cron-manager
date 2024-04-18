@@ -43,7 +43,7 @@ func ProcessJob(ctx context.Context, log *logrus.Logger, store *Store, scheduleI
 		return err
 	}
 
-	logger.Info("preparing job...")
+	logger.Info("Preparing job...")
 
 	// Initialize client
 	client, err := NewFlapsClient(ctx, schedule.AppName, store)
@@ -70,7 +70,7 @@ func ProcessJob(ctx context.Context, log *logrus.Logger, store *Store, scheduleI
 		return failJob(1, fmt.Errorf("failed to update job status: %w", err))
 	}
 
-	logger.Infof("running job...")
+	logger.Infof("Running job...")
 
 	return nil
 }
