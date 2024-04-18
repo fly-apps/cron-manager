@@ -22,7 +22,12 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Install runtime dependencies
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends libsqlite3-dev ssh sqlite3 cron curl ca-certificates && \
+    apt-get install -y --no-install-recommends \
+    ca-certificates \
+    cron \
+    curl \
+    libsqlite3-dev \
+    sqlite3 && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 

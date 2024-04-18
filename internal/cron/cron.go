@@ -14,7 +14,7 @@ const (
 	cronFilePath   = "/data/crontab"
 )
 
-func InitializeCron(store *Store) error {
+func InitializeCron() error {
 	if err := initializeLogFile(); err != nil {
 		return fmt.Errorf("failed to initialize log file: %w", err)
 	}
@@ -32,11 +32,14 @@ func syncCrontab(store *Store, log *logrus.Logger) error {
 	if err != nil {
 		return fmt.Errorf("failed to open crontab file: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	for _, schedule := range schedules {
 		entry := fmt.Sprintf("%s %s %d >> %s 2>&1\n", schedule.Schedule, executeCommand, schedule.ID, logFilePath)
-		file.WriteString(entry)
+		_, err := file.WriteString(entry)
+		if err != nil {
+			return fmt.Errorf("failed to write to crontab file: %w", err)
+		}
 	}
 
 	if err := exec.Command("crontab", cronFilePath).Run(); err != nil {

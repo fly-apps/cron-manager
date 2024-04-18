@@ -13,10 +13,6 @@ import (
 	"github.com/superfly/fly-go/tokens"
 )
 
-const (
-	apiEndpoint = "https://api.machines.dev/v1"
-)
-
 type FlapsClient struct {
 	appName     string
 	flapsClient *flaps.Client
