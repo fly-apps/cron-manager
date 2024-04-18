@@ -1,12 +1,13 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
+	"syscall"
+	"time"
 
-	"github.com/fly-apps/cron-manager/api"
 	"github.com/fly-apps/cron-manager/internal/cron"
+	"github.com/fly-apps/cron-manager/internal/supervisor"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/sirupsen/logrus"
 )
@@ -25,8 +26,6 @@ func main() {
 		}
 		log.SetLevel(level)
 	}
-
-	ctx := context.Background()
 
 	requiredPasswords := []string{"FLY_API_TOKEN"}
 	for _, str := range requiredPasswords {
@@ -48,19 +47,19 @@ func main() {
 		panic(fmt.Errorf("failed to sync crontab: %w", err))
 	}
 
-	// TODO - Supervise this.
-	go func() {
-		if err := cron.MonitorActiveJobs(ctx, store, log); err != nil {
-			panic(fmt.Errorf("failed to monitor active jobs: %w", err))
-		}
-	}()
-
 	if err := cron.SyncSchedules(store, log); err != nil {
 		log.Warnf("failed to sync schedules: %s", err)
 		log.Warnf("no schedule updates were made, please work to correct the issue re-deploy the application.")
 	}
 
-	if err := api.StartHttpServer(log); err != nil {
-		panic(fmt.Errorf("failed to start http server: %w", err))
+	svisor := supervisor.New("cron-manager", 5*time.Minute)
+	svisor.AddProcess("monitor", "/usr/local/bin/monitor", supervisor.WithRestart(0, 5*time.Second))
+	svisor.AddProcess("api", "/usr/local/bin/api", supervisor.WithRestart(0, 5*time.Second))
+
+	svisor.StopOnSignal(syscall.SIGINT, syscall.SIGTERM)
+
+	if err := svisor.Run(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
 	}
 }

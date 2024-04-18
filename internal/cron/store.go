@@ -287,7 +287,7 @@ func (s Store) UpdateJobMachine(id int, machineID string) error {
 }
 
 func (s Store) SetJobResult(id int, status string, exitCode int, stdout, stderr string) error {
-	_, err := s.Exec("UPDATE jobs SET status = ?, exit_code = ?, stdout = ?, stderr = ?, updated_at = ? WHERE id = ?",
+	_, err := s.Exec("UPDATE jobs SET exit_code = ?, stdout = ?, stderr = ?, updated_at = ? WHERE id = ?",
 		status,
 		exitCode,
 		stdout,

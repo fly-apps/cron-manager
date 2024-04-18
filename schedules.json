@@ -24,5 +24,31 @@
                 "policy": "no"
             }
         }
+    },
+    {
+        "name": "wocka-check",
+        "app_name": "shaun-pg-flex",
+        "schedule": "* * * * *",
+        "region": "iad",
+        "command": "sleep 30",
+        "command_timeout": 30,
+        "enabled": true,
+        "config": {
+            "metadata": {
+                "fly_process_group": "cron"
+            },
+            "auto_destroy": true,
+            "disable_machine_autostart": true,
+            "guest": {
+                "cpu_kind": "shared",
+                "cpus": 1,
+                "memory_mb": 512
+            },
+            "image": "flyio/postgres-flex:15.6",
+            "restart": {
+                "max_retries": 1,
+                "policy": "no"
+            }
+        }
     }
 ]

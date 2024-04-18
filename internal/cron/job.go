@@ -6,7 +6,6 @@ import (
 
 	"github.com/google/shlex"
 	"github.com/sirupsen/logrus"
-	fly "github.com/superfly/fly-go"
 )
 
 const (
@@ -44,7 +43,7 @@ func ProcessJob(ctx context.Context, log *logrus.Logger, store *Store, scheduleI
 		return err
 	}
 
-	logger.Info("processing scheduled job...")
+	logger.Info("preparing scheduled job...")
 
 	// Initialize client
 	client, err := NewFlapsClient(ctx, schedule.AppName, store)
@@ -71,14 +70,11 @@ func ProcessJob(ctx context.Context, log *logrus.Logger, store *Store, scheduleI
 		return failJob(1, fmt.Errorf("failed to update job status: %w", err))
 	}
 
-	logger.Debug("waiting for machine to start...")
+	logger.Infof("processing scheduled job...")
 
-	// Wait for the machine to start
-	if err := client.WaitForStatus(ctx, machine, fly.MachineStateStarted); err != nil {
-		return failJob(1, fmt.Errorf("failed to wait for machine to start: %w", err))
-	}
-
-	logger.Infof("Job %d has been started", job.ID)
+	// if err := client.WaitForStatus(ctx, machine, fly.MachineStateStarted); err != nil {
+	// 	return failJob(1, fmt.Errorf("failed to wait for machine to start: %w", err))
+	// }
 
 	return nil
 }
