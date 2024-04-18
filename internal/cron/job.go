@@ -52,7 +52,7 @@ func ProcessJob(ctx context.Context, log *logrus.Logger, store *Store, scheduleI
 	}
 
 	// Provision a new machine to run the job
-	machine, err := client.MachineProvision(ctx, logger, schedule, job)
+	machine, err := client.MachineProvision(ctx, schedule, job)
 	if err != nil {
 		if machine != nil {
 			if err := client.MachineDestroy(ctx, machine); err != nil {

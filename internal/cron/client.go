@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	fly "github.com/superfly/fly-go"
 	"github.com/superfly/fly-go/flaps"
 	"github.com/superfly/fly-go/tokens"
@@ -37,7 +36,7 @@ func NewFlapsClient(ctx context.Context, appName string, store *Store) (*FlapsCl
 	}, nil
 }
 
-func (c *FlapsClient) MachineProvision(ctx context.Context, log *logrus.Entry, schedule *Schedule, job *Job) (*fly.Machine, error) {
+func (c *FlapsClient) MachineProvision(ctx context.Context, schedule *Schedule, job *Job) (*fly.Machine, error) {
 	machineConfig := fly.LaunchMachineInput{
 		Config: &schedule.Config,
 		Region: schedule.Region,
