@@ -48,13 +48,6 @@ func (c *FlapsClient) MachineProvision(ctx context.Context, log *logrus.Entry, s
 		return nil, fmt.Errorf("failed to launch machine: %w", err)
 	}
 
-	log.WithFields(logrus.Fields{
-		"schedule-id": schedule.ID,
-		"job-id":      job.ID,
-		"region":      schedule.Region,
-		"image":       schedule.Config.Image,
-	}).Info("provisioning machine...")
-
 	if err := c.store.UpdateJobMachine(job.ID, machine.ID); err != nil {
 		return machine, fmt.Errorf("failed to update job machine: %w", err)
 	}
@@ -85,18 +78,6 @@ func (c *FlapsClient) MachineList(ctx context.Context, state string) ([]*fly.Mac
 	return c.flapsClient.List(ctx, state)
 }
 
-func (c *FlapsClient) MachineExec(ctx context.Context, cmd string, machineID string, timeout int) (*fly.MachineExecResponse, error) {
-	execReq := &fly.MachineExecRequest{
-		Cmd:     cmd,
-		Timeout: timeout,
-	}
-	return c.flapsClient.Exec(ctx, machineID, execReq)
-}
-
 func (c *FlapsClient) WaitForStatus(ctx context.Context, machine *fly.Machine, targetStatus string) error {
-	if err := c.flapsClient.Wait(ctx, machine, targetStatus, 30*time.Second); err != nil {
-		return fmt.Errorf("failed to wait for machine to start: %w", err)
-	}
-
-	return nil
+	return c.flapsClient.Wait(ctx, machine, targetStatus, 30*time.Second)
 }

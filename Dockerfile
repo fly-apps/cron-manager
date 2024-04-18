@@ -7,8 +7,10 @@ WORKDIR /app
 COPY . .
 
 # Build your Go application
+RUN CGO_ENABLED=1 GOOS=linux go build -ldflags '-extldflags "-static"' -v -o /fly/bin/monitor ./cmd/monitor
 RUN CGO_ENABLED=1 GOOS=linux go build -ldflags '-extldflags "-static"' -v -o /fly/bin/start ./cmd/start
 RUN CGO_ENABLED=1 GOOS=linux go build -ldflags '-extldflags "-static"' -v -o /fly/bin/cm ./cmd/cm
+RUN CGO_ENABLED=1 GOOS=linux go build -ldflags '-extldflags "-static"' -v -o /fly/bin/api ./cmd/api
 
 COPY ./bin/* /fly/bin/
 COPY ./schedules.json /fly/schedules.json
@@ -30,7 +32,6 @@ RUN apt-get update && \
     sqlite3 && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
-
 
 # Copy the built binary from the builder stage
 COPY --from=builder /fly/bin/* /usr/local/bin/

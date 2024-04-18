@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/shlex"
 	"github.com/sirupsen/logrus"
-	fly "github.com/superfly/fly-go"
 )
 
 const (
@@ -18,40 +18,32 @@ func ProcessJob(ctx context.Context, log *logrus.Logger, store *Store, scheduleI
 		return err
 	}
 
-	if schedule.Config.Metadata == nil {
-		schedule.Config.Metadata = make(map[string]string)
+	// Prepare the job
+	if err := prepareJob(schedule); err != nil {
+		return fmt.Errorf("failed to prepare job: %w", err)
 	}
-	// Indicate the associated Machine was created by the cron manager
-	// This will make reconciliation a bit safer.
-	schedule.Config.Metadata["managed-by-cron-manager"] = "true"
 
 	// Create a new job
-	jobID, err := store.CreateJob(schedule.ID)
+	job, err := store.CreateJob(schedule.ID)
 	if err != nil {
 		return fmt.Errorf("failed to create job: %w", err)
 	}
 
 	logger := log.WithFields(logrus.Fields{
-		"app-name":    schedule.AppName,
-		"schedule-id": schedule.ID,
-		"job-id":      jobID,
+		"app-name": schedule.AppName,
+		"schedule": schedule.Name,
+		"job-id":   job.ID,
 	})
 
 	failJob := func(exitCode int, err error) error {
-		if err := store.FailJob(jobID, exitCode, err.Error()); err != nil {
+		if err := store.FailJob(job.ID, exitCode, err.Error()); err != nil {
 			logger.WithError(err).Error("failed to update job status")
 		}
 		logger.WithError(err).Errorf("job failed with exit code %d", exitCode)
 		return err
 	}
 
-	// TODO - Consider coupling this with the above transaction
-	job, err := store.FindJob(fmt.Sprint(jobID))
-	if err != nil {
-		return failJob(1, fmt.Errorf("failed to find job: %w", err))
-	}
-
-	logger.Info("processing scheduled job...")
+	logger.Info("Preparing job...")
 
 	// Initialize client
 	client, err := NewFlapsClient(ctx, schedule.AppName, store)
@@ -67,54 +59,37 @@ func ProcessJob(ctx context.Context, log *logrus.Logger, store *Store, scheduleI
 				logger.Warnf("failed to destroy machine %s: %s", machine.ID, err)
 			}
 		}
+
 		return failJob(1, fmt.Errorf("failed to provision machine: %w", err))
 	}
 
 	logger = logger.WithField("machine-id", machine.ID)
 
-	// Ensure the machine gets torn down on exit
-	defer func() {
-		logger.Debugf("cleaning up job...")
-		if err := client.MachineDestroy(ctx, machine); err != nil {
-			logger.WithError(err).Warn("failed to destroy machine")
-		}
-	}()
-
 	// Set the job status to running
-	if err := store.UpdateJobStatus(jobID, JobStatusRunning); err != nil {
+	if err := store.UpdateJobStatus(job.ID, JobStatusRunning); err != nil {
 		return failJob(1, fmt.Errorf("failed to update job status: %w", err))
 	}
 
-	logger.Debug("waiting for machine to start...")
+	logger.Infof("Running job...")
 
-	// Wait for the machine to start
-	if err := client.WaitForStatus(ctx, machine, fly.MachineStateStarted); err != nil {
-		return failJob(1, fmt.Errorf("failed to wait for machine to start: %w", err))
-	}
+	return nil
+}
 
-	logger.Debugf("executing command `%s` against machine with timeout %ds", schedule.Command, schedule.CommandTimeout)
-
-	// Execute the job
-	resp, err := client.MachineExec(ctx, schedule.Command, machine.ID, schedule.CommandTimeout)
+func prepareJob(schedule *Schedule) error {
+	cmdSlice, err := shlex.Split(schedule.Command)
 	if err != nil {
-		return failJob(1, fmt.Errorf("failed to execute job: %w", err))
+		return fmt.Errorf("failed to split command: %w", err)
 	}
 
-	// Handle failures.
-	switch {
-	case resp.ExitCode != 0:
-		logger.Errorf("job failed with exit code %d", resp.ExitCode)
-		return failJob(int(resp.ExitCode), fmt.Errorf("job failed with exit code %d", resp.ExitCode))
-	case resp.ExitCode == 0 && resp.StdErr != "":
-		logger.Errorf("job failed with stderr %s", resp.StdErr)
-		return failJob(-1, fmt.Errorf("%s", resp.StdErr))
+	schedule.Config.Init.Cmd = cmdSlice
+
+	if schedule.Config.Metadata == nil {
+		schedule.Config.Metadata = make(map[string]string)
 	}
 
-	if err := store.CompleteJob(job.ID, int(resp.ExitCode), resp.StdOut); err != nil {
-		logger.WithError(err).Error("failed to set job status to complete")
-	}
-
-	logger.Infof("job completed successfully!")
+	// Indicate the associated Machine was created by the cron manager
+	// This helps scope the reconciliation logic.
+	schedule.Config.Metadata["managed-by-cron-manager"] = "true"
 
 	return nil
 }
