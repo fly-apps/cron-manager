@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"sync"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -30,136 +31,141 @@ func MonitorActiveJobs(ctx context.Context, store *Store, log *logrus.Logger) er
 			if err != nil {
 				return fmt.Errorf("failed to find active jobs: %w", err)
 			}
+			var wg sync.WaitGroup
 
 			// Loop through the running jobs and determine their status
 			for _, job := range jobs {
-				// Fetch the associated schedule for the job
-				schedule, err := store.FindSchedule(job.ScheduleID)
-				if err != nil {
-					log.WithError(err).Errorf("failed to find schedule for job %d", job.ID)
-					continue
-				}
-
-				log := log.WithFields(logrus.Fields{
-<<<<<<< Updated upstream
-					"app-name":    schedule.AppName,
-					"schedule-id": schedule.ID,
-					"job-id":      job.ID,
-					"machine-id":  job.MachineID.String,
-=======
-					"app-name":   schedule.AppName,
-					"schedule":   schedule.Name,
-					"job-id":     job.ID,
-					"machine-id": job.MachineID.String,
->>>>>>> Stashed changes
-				})
-
-				// Initialize the flaps client
-				client, err := NewFlapsClient(ctx, schedule.AppName, store)
-				if err != nil {
-					log.WithError(err).Errorf("failed to create client for job %d", job.ID)
-					continue
-				}
-
-				// Fetch the machine associated with the job
-				machine, err := client.MachineGet(ctx, job.MachineID.String)
-				if err != nil {
-					if exitErr, ok := err.(*exec.ExitError); ok {
-						if exitErr.ExitCode() == 404 {
-							// Machines are queryable up to 48 hours after they are destroyed.
-							// If the cron manager is shutdown or inactive for more than 48 hours, we will not be able to evaluate the result.
-							log.WithError(err).Errorf("failed to get machine %s: %v", job.MachineID.String, err)
-							if err := store.FailJob(job.ID, -1, "machine destroyed before we could interpret the results"); err != nil {
-								log.WithError(err).Errorf("failed to update job %d status", job.ID)
-							}
-							continue
-						}
-						log.WithError(err).Errorf("failed to get machine %s: %v", job.MachineID.String, err)
+				wg.Add(1)
+				go func(job Job) {
+					defer wg.Done()
+					if err := evaluateJob(ctx, log, store, job); err != nil {
+						log.WithError(err).Errorf("failed to monitor job %d", job.ID)
 					}
-				}
+				}(job)
 
-				log.Debugf("monitoring scheduled job")
-<<<<<<< Updated upstream
-=======
-
-				startEvent := findStartEvent(machine)
-				if startEvent == nil {
-					log.Infof("machine %s has not started yet", machine.ID)
-					continue
-				}
-
-				// Calculate the execution time
-				executionTime := time.Now().Sub(startEvent.Time()).Seconds()
-				log = log.WithField("execution-time", executionTime)
->>>>>>> Stashed changes
-
-				switch machine.State {
-				case fly.MachineStateDestroyed:
-					log.Debugf("machine %s is destroyed", machine.ID)
-
-					// Find the exit event
-					event := findExitEvent(machine)
-					if event == nil {
-						log.Errorf("failed to find exit event for machine %s", machine.ID)
-						continue
-					}
-
-					// Get the exit code
-					if event.Request != nil && event.Request.ExitEvent != nil {
-						exitCode := event.Request.ExitEvent.ExitCode
-						if exitCode != 0 {
-							if err := store.FailJob(job.ID, exitCode, ""); err != nil {
-								log.WithError(err).Errorf("failed to update job %d status", job.ID)
-							}
-							log.Infof("scheduled job failed with exit code %d", exitCode)
-						} else {
-							if err := store.CompleteJob(job.ID, exitCode, ""); err != nil {
-								log.WithError(err).Errorf("failed to update job %d status", job.ID)
-							}
-<<<<<<< Updated upstream
-
-=======
->>>>>>> Stashed changes
-							log.Infof("scheduled job completed successfully")
-						}
-					}
-				default:
-<<<<<<< Updated upstream
-					// Calculate the total execution time
-					executionTime := time.Now().Sub(job.UpdatedAt).Seconds()
-
-					// Machine is in a non-destroyed state, verify run time hasn't exceeded the command timeout
-					if executionTime > float64(schedule.CommandTimeout) {
-						err := fmt.Sprintf("machine `%s` exceeded the command timeout of %d seconds. (%fs)",
-							machine.ID,
-							schedule.CommandTimeout,
-							executionTime,
-						)
-=======
-					// Machine is in a non-destroyed state, verify run time hasn't exceeded the command timeout
-					if executionTime > float64(schedule.CommandTimeout) {
-						err := fmt.Sprintf("machine `%s` exceeded the command timeout of %d seconds.",
-							machine.ID,
-							schedule.CommandTimeout)
->>>>>>> Stashed changes
-
-						log.Warnf(err)
-
-						if err := client.MachineDestroy(ctx, machine); err != nil {
-							log.WithError(err).Errorf("failed to destroy machine %s", machine.ID)
-							continue
-						}
-
-						if err := store.FailJob(job.ID, -1, err); err != nil {
-							log.WithError(err).Errorf("failed to update job %d status", job.ID)
-						}
-					}
-
-					log.Debugf("machine is in state %s", machine.State)
-				}
+				wg.Wait()
 			}
 		}
 	}
+}
+
+func evaluateJob(ctx context.Context, logger *logrus.Logger, store *Store, job Job) error {
+	// Fetch the associated schedule for the job
+	schedule, err := store.FindSchedule(job.ScheduleID)
+	if err != nil {
+		return fmt.Errorf("failed to find schedule for job %d: %w", job.ID, err)
+	}
+
+	log := logger.WithFields(logrus.Fields{
+		"app-name":   schedule.AppName,
+		"schedule":   schedule.Name,
+		"job-id":     job.ID,
+		"machine-id": job.MachineID.String,
+	})
+
+	// Initialize the flaps client
+	client, err := NewFlapsClient(ctx, schedule.AppName, store)
+	if err != nil {
+		return fmt.Errorf("failed to create client for job %d: %w", job.ID, err)
+	}
+
+	// Fetch the machine associated with the job
+	machine, err := client.MachineGet(ctx, job.MachineID.String)
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			if exitErr.ExitCode() == 404 {
+				// Machines are queryable up to 48 hours after they are destroyed.
+				// If the cron manager is shutdown or inactive for more than 48 hours, we will not be able to evaluate the result.
+				log.WithError(err).Errorf("failed to get machine %s: %v", job.MachineID.String, err)
+				if err := store.FailJob(job.ID, -1, "machine destroyed before we could interpret the results"); err != nil {
+					log.WithError(err).Errorf("failed to update job %d status", job.ID)
+				}
+				return nil
+			}
+			log.WithError(err).Errorf("failed to get machine %s: %v", job.MachineID.String, err)
+		}
+	}
+
+	log.Debugf("monitoring scheduled job")
+
+	startEvent := findStartEvent(machine)
+	if startEvent == nil {
+		log.Infof("machine %s has not started yet", machine.ID)
+		return nil
+	}
+
+	switch machine.State {
+	case fly.MachineStateDestroyed:
+		log.Debugf("machine %s is destroyed", machine.ID)
+
+		log = log.WithField("execution-time", fmt.Sprintf("%.2fs", calculateExecutionTime(machine)))
+
+		// Find the exit event
+		event := findExitEvent(machine)
+		if event == nil {
+			return fmt.Errorf("failed to find exit event for destroyed machine %s", machine.ID)
+		}
+
+		// Get the exit code
+		if event.Request != nil && event.Request.ExitEvent != nil {
+			exitCode := event.Request.ExitEvent.ExitCode
+			if exitCode != 0 {
+				if err := store.FailJob(job.ID, exitCode, ""); err != nil {
+					log.WithError(err).Errorf("failed to update job %d status", job.ID)
+				}
+				log.Infof("scheduled job failed with exit code %d", exitCode)
+			} else {
+				if err := store.CompleteJob(job.ID, exitCode, ""); err != nil {
+					log.WithError(err).Errorf("failed to update job %d status", job.ID)
+				}
+				log.Infof("scheduled job completed successfully")
+			}
+		}
+	default:
+		executionTime := calculateExecutionTime(machine)
+		log = log.WithField("execution-time", fmt.Sprintf("%.2fs", executionTime))
+
+		// Machine is in a non-destroyed state, verify run time hasn't exceeded the command timeout
+		if executionTime > float64(schedule.CommandTimeout) {
+			err := fmt.Sprintf("machine `%s` exceeded the command timeout of %d seconds.",
+				machine.ID,
+				schedule.CommandTimeout)
+
+			log.Warnf(err)
+
+			if err := client.MachineDestroy(ctx, machine); err != nil {
+				return fmt.Errorf("failed to destroy machine %s: %w", machine.ID, err)
+			}
+
+			if err := store.FailJob(job.ID, -1, err); err != nil {
+				log.WithError(err).Errorf("failed to update job %d status", job.ID)
+			}
+		}
+
+		log.Debugf("machine is in state %s", machine.State)
+	}
+
+	return nil
+}
+
+func calculateExecutionTime(machine *fly.Machine) float64 {
+	// Base it off the time the machine entered a start state.
+	startEvent := findStartEvent(machine)
+	if startEvent == nil {
+		return 0
+	}
+
+	startTime := startEvent.Time()
+
+	// Default to the current time if the machine has not exited yet.
+	endTime := time.Now()
+
+	exitEvent := findExitEvent(machine)
+	if exitEvent != nil {
+		endTime = exitEvent.Time()
+	}
+
+	return endTime.Sub(startTime).Seconds()
 }
 
 func findExitEvent(machine *fly.Machine) *fly.MachineEvent {
