@@ -29,7 +29,7 @@ func handleJobTrigger(w http.ResponseWriter, r *http.Request) {
 		renderErr(w, err)
 		return
 	}
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	if err := cron.ProcessJob(r.Context(), log, store, req.ID); err != nil {
 		log.WithError(err).Error("failed to process job")
