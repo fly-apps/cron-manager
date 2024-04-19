@@ -9,7 +9,8 @@ import (
 )
 
 const (
-	schedulesFilePath = "/usr/local/share/schedules.json"
+	schedulesFilePath     = "/usr/local/share/schedules.json"
+	defaultCommandTimeout = 30
 )
 
 func SyncSchedules(store *Store, log *logrus.Logger) error {
@@ -19,20 +20,18 @@ func SyncSchedules(store *Store, log *logrus.Logger) error {
 		return err
 	}
 
-	// Query existing schedules
 	existingSchedules, err := store.ListSchedules()
 	if err != nil {
 		return fmt.Errorf("failed to list schedules: %w", err)
 	}
 
 	// Track present schedules so we know which ones to delete
-	presentSchedules := make(map[string]struct{})
+	presentSchedules := make(map[string]int)
 
-	// Loop through schedules resolved from `schedules.json`
 	for _, schedule := range schedules {
 		// Set command timeout to default if not provided
 		if schedule.CommandTimeout == 0 {
-			schedule.CommandTimeout = defaultExecTimeout
+			schedule.CommandTimeout = defaultCommandTimeout
 		}
 
 		record := findScheduleByName(existingSchedules, schedule.Name)
@@ -52,17 +51,15 @@ func SyncSchedules(store *Store, log *logrus.Logger) error {
 		}
 
 		log.Infof("Updated schedule %s", schedule.Name)
-		presentSchedules[schedule.Name] = struct{}{}
+		presentSchedules[schedule.Name] = 1
 	}
 
 	// Delete schedules that are no longer present
 	for _, schedule := range existingSchedules {
 		if _, exists := presentSchedules[schedule.Name]; !exists {
-			idStr := fmt.Sprint(schedule.ID)
-			if err := store.DeleteSchedule(idStr); err != nil {
+			if err := store.DeleteSchedule(fmt.Sprint(schedule.ID)); err != nil {
 				return fmt.Errorf("failed to delete schedule: %w", err)
 			}
-
 			log.Infof("deleted schedule %s", schedule.Name)
 		}
 	}
