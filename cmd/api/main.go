@@ -24,5 +24,7 @@ func main() {
 		log.SetLevel(level)
 	}
 
-	api.StartHttpServer(log)
+	if err := api.StartHttpServer(log); err != nil {
+		panic(err)
+	}
 }

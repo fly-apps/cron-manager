@@ -4,6 +4,7 @@ go 1.21.0
 
 require (
 	github.com/go-chi/chi v1.5.5
+	github.com/google/go-cmp v0.6.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/mattn/go-sqlite3 v1.14.22
 	github.com/olekukonko/tablewriter v0.0.5
