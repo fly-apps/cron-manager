@@ -23,7 +23,7 @@ func handleJobTrigger(w http.ResponseWriter, r *http.Request) {
 	}
 	defer func() { _ = r.Body.Close() }()
 
-	store, err := cron.NewStore(cron.StorePath)
+	store, err := cron.NewStore(cron.DefaultStorePath)
 	if err != nil {
 		log.WithError(err).Error("failed to initialize sqlite")
 		renderErr(w, err)

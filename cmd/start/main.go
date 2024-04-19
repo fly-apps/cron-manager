@@ -18,7 +18,7 @@ func main() {
 	checkRequiredEnvs([]string{"FLY_API_TOKEN"})
 
 	// Initialize the store
-	store, err := cron.InitializeStore(cron.StorePath, cron.DefaultMigrationsPath)
+	store, err := cron.InitializeStore(cron.DefaultStorePath, cron.DefaultMigrationsPath)
 	if err != nil {
 		panic(fmt.Errorf("failed to create store: %w", err))
 	}

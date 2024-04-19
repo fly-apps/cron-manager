@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	StorePath             = "/data/state.db?_busy_timeout=5000&_journal_mode=WAL"
+	DefaultStorePath      = "/data/state.db?_busy_timeout=5000&_journal_mode=WAL"
 	DefaultMigrationsPath = "/usr/local/share/migrations"
 
 	JobStatusPending   = "pending"

@@ -48,7 +48,7 @@ var listCmd = &cobra.Command{
 	Args:  cobra.NoArgs,
 
 	RunE: func(cmd *cobra.Command, args []string) error {
-		store, err := cron.NewStore(cron.StorePath)
+		store, err := cron.NewStore(cron.DefaultStorePath)
 		if err != nil {
 			return fmt.Errorf("failed to create store: %w", err)
 		}
@@ -101,7 +101,7 @@ var processJobCmd = &cobra.Command{
 			return fmt.Errorf("failed to convert schedule ID to integer: %w", err)
 		}
 
-		store, err := cron.NewStore(cron.StorePath)
+		store, err := cron.NewStore(cron.DefaultStorePath)
 		if err != nil {
 			return fmt.Errorf("failed to create store: %w", err)
 		}
@@ -123,7 +123,7 @@ var listJobsCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		scheduleID := args[0]
 
-		store, err := cron.NewStore(cron.StorePath)
+		store, err := cron.NewStore(cron.DefaultStorePath)
 		if err != nil {
 			return fmt.Errorf("failed to create store: %w", err)
 		}
@@ -179,7 +179,7 @@ var showJobCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		jobID := args[0]
 
-		store, err := cron.NewStore(cron.StorePath)
+		store, err := cron.NewStore(cron.DefaultStorePath)
 		if err != nil {
 			return fmt.Errorf("failed to create store: %w", err)
 		}
@@ -249,7 +249,7 @@ var syncCrontabCmd = &cobra.Command{
 	Args:  cobra.NoArgs,
 
 	RunE: func(cmd *cobra.Command, args []string) error {
-		store, err := cron.NewStore(cron.StorePath)
+		store, err := cron.NewStore(cron.DefaultMigrationsPath)
 		if err != nil {
 			return fmt.Errorf("failed to create store: %w", err)
 		}

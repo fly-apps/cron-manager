@@ -14,7 +14,7 @@ func main() {
 
 	ctx := context.Background()
 
-	store, err := cron.NewStore(cron.StorePath)
+	store, err := cron.NewStore(cron.DefaultStorePath)
 	if err != nil {
 		panic(fmt.Errorf("failed to create store: %w", err))
 	}
