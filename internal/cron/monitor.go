@@ -41,8 +41,9 @@ func MonitorActiveJobs(ctx context.Context, store *Store, log *logrus.Logger) er
 					}
 				}(job)
 
-				wg.Wait()
 			}
+
+			wg.Wait()
 		}
 	}
 }

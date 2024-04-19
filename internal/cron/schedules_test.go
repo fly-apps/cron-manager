@@ -4,6 +4,9 @@ import (
 	"os"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+	fly "github.com/superfly/fly-go"
+
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -13,8 +16,7 @@ const (
 	schedulesPath  = "../../schedules.json"
 )
 
-func TestReadSchedulesFromFile(t *testing.T) {
-	rawSchedule := `[
+const testData = `[
     {
         "name": "uptime-check",
         "app_name": "shaun-pg-flex",
@@ -25,7 +27,6 @@ func TestReadSchedulesFromFile(t *testing.T) {
         "enabled": true,
         "config": {
             "auto_destroy": true,
-            "disable_machine_autostart": true,
             "guest": {
                 "cpu_kind": "shared",
                 "cpus": 1,
@@ -47,7 +48,6 @@ func TestReadSchedulesFromFile(t *testing.T) {
         "enabled": false,
         "config": {
             "auto_destroy": true,
-            "disable_machine_autostart": true,
             "guest": {
                 "cpu_kind": "shared",
                 "cpus": 1,
@@ -62,11 +62,12 @@ func TestReadSchedulesFromFile(t *testing.T) {
 	}
 
 ]`
-	schedulesFile, err := createSchedulesFile([]byte(rawSchedule))
+
+func TestReadSchedulesFromFile(t *testing.T) {
+	schedulesFile, err := createSchedulesFile([]byte(testData))
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = schedulesFile.Close() }()
 	defer func() { _ = os.Remove(schedulesFile.Name()) }()
 
 	schedules, err := readSchedulesFromFile(schedulesFile.Name())
@@ -78,60 +79,55 @@ func TestReadSchedulesFromFile(t *testing.T) {
 		t.Fatalf("expected 2 schedules, got %d", len(schedules))
 	}
 
-	schedule := schedules[0]
-
-	if schedule.Name != "uptime-check" {
-		t.Errorf("expected schedule name to be uptime-check, got %s", schedule.Name)
+	expected := []Schedule{
+		{
+			Name:           "uptime-check",
+			AppName:        "shaun-pg-flex",
+			Schedule:       "* * * * *",
+			Region:         "iad",
+			Command:        "uptime",
+			CommandTimeout: 60,
+			Enabled:        true,
+			Config: fly.MachineConfig{
+				AutoDestroy: true,
+				Guest: &fly.MachineGuest{
+					CPUKind:  "shared",
+					CPUs:     1,
+					MemoryMB: 512,
+				},
+				Image: "ghcr.io/livebook-dev/livebook:0.11.4",
+				Restart: &fly.MachineRestart{
+					MaxRetries: 1,
+					Policy:     "no",
+				},
+			},
+		},
+		{
+			Name:           "test-check",
+			AppName:        "shaun-pg-flex",
+			Schedule:       "* * * * *",
+			Region:         "iad",
+			Command:        "uptime",
+			CommandTimeout: 0,
+			Enabled:        false,
+			Config: fly.MachineConfig{
+				AutoDestroy: true,
+				Guest: &fly.MachineGuest{
+					CPUKind:  "shared",
+					CPUs:     1,
+					MemoryMB: 512,
+				},
+				Image: "ghcr.io/livebook-dev/livebook:0.11.4",
+				Restart: &fly.MachineRestart{
+					MaxRetries: 1,
+					Policy:     "no",
+				},
+			},
+		},
 	}
 
-	if schedule.AppName != "shaun-pg-flex" {
-		t.Errorf("expected app name to be shaun-pg-flex, got %s", schedule.AppName)
-	}
-
-	if schedule.Enabled != true {
-		t.Errorf("expected enabled to be true, got %t", schedule.Enabled)
-	}
-
-	if schedule.Schedule != "* * * * *" {
-		t.Errorf("expected schedule to be * * * * *, got %s", schedule.Schedule)
-	}
-
-	if schedule.Region != "iad" {
-		t.Errorf("expected region to be iad, got %s", schedule.Region)
-	}
-
-	if schedule.Command != "uptime" {
-		t.Errorf("expected command to be uptime, got %s", schedule.Command)
-	}
-
-	if schedule.CommandTimeout != 60 {
-		t.Errorf("expected command timeout to be 60, got %d", schedule.CommandTimeout)
-	}
-
-	if schedule.Config.Image != "ghcr.io/livebook-dev/livebook:0.11.4" {
-		t.Errorf("expected image to be ghcr.io/livebook-dev/livebook:0.11.4, got %s", schedule.Config.Image)
-	}
-
-	if !schedule.Config.AutoDestroy {
-		t.Errorf("expected auto destroy to be true, got %t", schedule.Config.AutoDestroy)
-	}
-
-	if schedule.Config.Guest.MemoryMB != 512 {
-		t.Errorf("expected memory to be 512, got %d", schedule.Config.Guest.MemoryMB)
-	}
-
-	schedule = schedules[1]
-
-	if schedule.Name != "test-check" {
-		t.Errorf("expected schedule name to be test-check, got %s", schedule.Name)
-	}
-
-	if schedule.CommandTimeout != 0 {
-		t.Errorf("expected command timeout to be 30, got %d", schedule.CommandTimeout)
-	}
-
-	if schedule.Enabled != false {
-		t.Errorf("expected enabled to be false, got %t", schedule.Enabled)
+	if diff := cmp.Diff(expected, schedules); diff != "" {
+		t.Errorf("Schedules mismatch (-want +got):\n%s", diff)
 	}
 
 }

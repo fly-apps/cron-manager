@@ -90,8 +90,6 @@ func (p *process) Run() {
 	p.output.PipeOutput(p)
 	defer p.output.ClosePipe(p)
 
-	ensureKill(p.cmd)
-
 	p.writeLine([]byte("\033[1mRunning...\033[0m"))
 
 	if err := p.cmd.Run(); err != nil {

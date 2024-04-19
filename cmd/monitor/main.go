@@ -33,5 +33,7 @@ func main() {
 		panic(fmt.Errorf("failed to create store: %w", err))
 	}
 
-	cron.MonitorActiveJobs(ctx, store, log)
+	if err := cron.MonitorActiveJobs(ctx, store, log); err != nil {
+		panic(err)
+	}
 }

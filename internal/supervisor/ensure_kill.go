@@ -1,13 +1,12 @@
-//go:build linux
-// +build linux
+//go:build !linux
+// +build !linux
 
 package supervisor
 
 import (
 	"os/exec"
-	"syscall"
 )
 
 func ensureKill(cmd *exec.Cmd) {
-	cmd.SysProcAttr.Pdeathsig = syscall.SIGKILL
+	// cmd.SysProcAttr.Pdeathsig is supported on Linux, we can't do anything here
 }
