@@ -4,17 +4,24 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 
 	"github.com/sirupsen/logrus"
 )
 
 const (
-	schedulesFilePath     = "/usr/local/share/schedules.json"
-	defaultCommandTimeout = 30
+	DefaultSchedulesFilePath = "/usr/local/share/schedules.json"
+	executeCommand           = "/usr/local/bin/process-job"
+	cronFilePath             = "/data/crontab"
+	defaultCommandTimeout    = 30
 )
 
-func SyncSchedules(store *Store, log *logrus.Logger) error {
-	// Read schedules from file
+// SyncSchedules reads schedules from a file and syncs them with the store
+func SyncSchedules(store *Store, log *logrus.Logger, schedulesFilePath string) error {
+	if schedulesFilePath == "" {
+		schedulesFilePath = DefaultSchedulesFilePath
+	}
+
 	schedules, err := readSchedulesFromFile(schedulesFilePath)
 	if err != nil {
 		return err
@@ -29,6 +36,7 @@ func SyncSchedules(store *Store, log *logrus.Logger) error {
 	presentSchedules := make(map[string]int)
 
 	for _, schedule := range schedules {
+
 		// Set command timeout to default if not provided
 		if schedule.CommandTimeout == 0 {
 			schedule.CommandTimeout = defaultCommandTimeout
@@ -41,7 +49,6 @@ func SyncSchedules(store *Store, log *logrus.Logger) error {
 			}
 
 			log.Infof("Created schedule %s", schedule.Name)
-
 			continue
 		}
 
@@ -64,11 +71,37 @@ func SyncSchedules(store *Store, log *logrus.Logger) error {
 		}
 	}
 
-	if err := syncCrontab(store, log); err != nil {
+	return nil
+}
+
+// SyncCrontab queries the store for enabled schedules and writes them to the crontab file
+func SyncCrontab(store *Store, log *logrus.Logger) error {
+	schedules, err := store.ListEnabledSchedules()
+	if err != nil {
+		return fmt.Errorf("failed to list schedules: %w", err)
+	}
+
+	file, err := os.Create(cronFilePath)
+	if err != nil {
+		return fmt.Errorf("failed to open crontab file: %w", err)
+	}
+	defer func() { _ = file.Close() }()
+
+	for _, schedule := range schedules {
+		entry := fmt.Sprintf("%s %s %d\n", schedule.Schedule, executeCommand, schedule.ID)
+		_, err := file.WriteString(entry)
+		if err != nil {
+			return fmt.Errorf("failed to write to crontab file: %w", err)
+		}
+	}
+
+	if err := exec.Command("crontab", cronFilePath).Run(); err != nil {
 		return fmt.Errorf("failed to sync crontab: %w", err)
 	}
 
-	return nil
+	log.Printf("Synced %d schedule(s) to crontab", len(schedules))
+
+	return file.Sync()
 }
 
 func findScheduleByName(schedules []Schedule, name string) *Schedule {
@@ -77,7 +110,6 @@ func findScheduleByName(schedules []Schedule, name string) *Schedule {
 			return &schedule
 		}
 	}
-
 	return nil
 }
 
@@ -87,8 +119,8 @@ func readSchedulesFromFile(schedulesFilePath string) ([]Schedule, error) {
 		return nil, fmt.Errorf("failed to open schedules file: %w", err)
 	}
 
-	// If the file is empty, return an empty slice
-	// This is expected behavior on initial launch, or if all schedules are being deleted
+	// If the file is empty, return an empty slice.
+	// This is expected behavior on initial launch, or in the event all schedules are being deleted.
 	if len(schedulesBytes) == 0 {
 		return []Schedule{}, nil
 	}

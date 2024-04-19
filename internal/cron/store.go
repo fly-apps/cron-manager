@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	StorePath      = "/data/state.db?_busy_timeout=5000&_journal_mode=WAL"
-	MigrationsPath = "/usr/local/share/migrations"
+	DefaultStorePath      = "/data/state.db?_busy_timeout=5000&_journal_mode=WAL"
+	DefaultMigrationsPath = "/usr/local/share/migrations"
 
 	JobStatusPending   = "pending"
 	JobStatusRunning   = "running"
@@ -73,19 +73,21 @@ func NewStore(storePath string) (*Store, error) {
 	return &Store{s}, nil
 }
 
-func (s Store) SetupDB(log *logrus.Logger, migrationDirPath string) error {
-	migrations := &migrate.FileMigrationSource{
-		Dir: migrationDirPath,
-	}
-
-	n, err := migrate.Exec(s.DB.DB, "sqlite3", migrations, migrate.Up)
+func InitializeStore(storePath, migrationsPath string) (*Store, error) {
+	store, err := NewStore(storePath)
 	if err != nil {
-		return fmt.Errorf("error applying migrations: %w", err)
+		return nil, fmt.Errorf("error creating store: %w", err)
 	}
 
-	log.Infof("applied %d migrations", n)
+	if migrationsPath == "" {
+		migrationsPath = DefaultMigrationsPath
+	}
 
-	return nil
+	if err := store.setupDB(logrus.New(), migrationsPath); err != nil {
+		return nil, fmt.Errorf("error setting up database: %w", err)
+	}
+
+	return store, nil
 }
 
 func (s Store) FindSchedule(id int) (*Schedule, error) {
@@ -339,4 +341,19 @@ func convertToStandardSchedule(raw RawSchedule) (*Schedule, error) {
 		Enabled:        raw.Enabled,
 		Config:         cfg,
 	}, nil
+}
+
+func (s Store) setupDB(log *logrus.Logger, migrationDirPath string) error {
+	migrations := &migrate.FileMigrationSource{
+		Dir: migrationDirPath,
+	}
+
+	n, err := migrate.Exec(s.DB.DB, "sqlite3", migrations, migrate.Up)
+	if err != nil {
+		return fmt.Errorf("error applying migrations: %w", err)
+	}
+
+	log.Infof("applied %d migrations", n)
+
+	return nil
 }
