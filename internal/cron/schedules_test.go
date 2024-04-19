@@ -10,12 +10,6 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-const (
-	testStorePath  = "../../test/test.db"
-	migrationsPath = "../../migrations"
-	schedulesPath  = "../../schedules.json"
-)
-
 const testData = `[
     {
         "name": "uptime-check",
