@@ -18,7 +18,7 @@ func main() {
 	if err != nil {
 		panic(fmt.Errorf("failed to create store: %w", err))
 	}
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	if err := cron.MonitorActiveJobs(ctx, store, logger); err != nil {
 		panic(err)
