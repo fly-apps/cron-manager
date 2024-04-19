@@ -12,6 +12,8 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/sirupsen/logrus"
+
+	"github.com/fly-apps/cron-manager/internal/flycheck"
 )
 
 type contextKey int
@@ -36,7 +38,8 @@ func shutdownInterceptor(next http.Handler) http.Handler {
 func StartHttpServer(logger *logrus.Logger) error {
 	r := chi.NewMux()
 	r.Use(shutdownInterceptor)
-	r.Mount("/", Handler(logger))
+	r.Mount("/flycheck", flycheck.Handler())
+	r.Mount("/command", Handler(logger))
 
 	w := logger.Writer()
 	defer func() { _ = w.Close() }()

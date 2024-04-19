@@ -9,6 +9,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.22
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/spf13/cobra v1.8.0
+	github.com/superfly/fly-checks v0.0.0-20230510154016-d189351293f2
 	github.com/superfly/fly-go v0.1.4
 	golang.org/x/sync v0.7.0
 )
