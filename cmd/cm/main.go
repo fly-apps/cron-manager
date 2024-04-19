@@ -254,7 +254,7 @@ var syncCrontabCmd = &cobra.Command{
 			return fmt.Errorf("failed to create store: %w", err)
 		}
 
-		if err := cron.SyncSchedules(store, log); err != nil {
+		if err := cron.SyncSchedules(store, log, cron.DefaultSchedulesFilePath); err != nil {
 			return fmt.Errorf("failed to sync crontab: %w", err)
 		}
 

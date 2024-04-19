@@ -15,6 +15,7 @@ const (
 	monitorFrequency = 5 * time.Second
 )
 
+// MonitorActiveJobs checks the status of all active jobs and updates their status.
 func MonitorActiveJobs(ctx context.Context, store *Store, log *logrus.Logger) error {
 	ticker := time.NewTicker(monitorFrequency)
 	defer ticker.Stop()
@@ -87,7 +88,7 @@ func evaluateJob(ctx context.Context, logger *logrus.Logger, store *Store, job J
 
 	log.Debugf("Monitoring job")
 
-	startEvent := findStartEvent(machine)
+	startEvent := findEvent(machine, "start")
 	if startEvent == nil {
 		log.Debugf("Machine %s has not started yet", machine.ID)
 		return nil
@@ -100,7 +101,7 @@ func evaluateJob(ctx context.Context, logger *logrus.Logger, store *Store, job J
 		log = log.WithField("execution-time", fmt.Sprintf("%.2fs", calculateExecutionTime(machine)))
 
 		// Find the exit event
-		event := findExitEvent(machine)
+		event := findEvent(machine, "exit")
 		if event == nil {
 			return fmt.Errorf("failed to find exit event for destroyed machine %s", machine.ID)
 		}
@@ -149,7 +150,7 @@ func evaluateJob(ctx context.Context, logger *logrus.Logger, store *Store, job J
 
 func calculateExecutionTime(machine *fly.Machine) float64 {
 	// Base it off the time the machine entered a start state.
-	startEvent := findStartEvent(machine)
+	startEvent := findEvent(machine, "start")
 	if startEvent == nil {
 		return 0
 	}
@@ -159,7 +160,7 @@ func calculateExecutionTime(machine *fly.Machine) float64 {
 	// Default to the current time if the machine has not exited yet.
 	endTime := time.Now()
 
-	exitEvent := findExitEvent(machine)
+	exitEvent := findEvent(machine, "exit")
 	if exitEvent != nil {
 		endTime = exitEvent.Time()
 	}
@@ -167,27 +168,13 @@ func calculateExecutionTime(machine *fly.Machine) float64 {
 	return endTime.Sub(startTime).Seconds()
 }
 
-func findExitEvent(machine *fly.Machine) *fly.MachineEvent {
+func findEvent(machine *fly.Machine, eventType string) *fly.MachineEvent {
 	if len(machine.Events) == 0 {
 		return nil
 	}
 
 	for _, event := range machine.Events {
-		if event.Type == "exit" {
-			return event
-		}
-	}
-
-	return nil
-}
-
-func findStartEvent(machine *fly.Machine) *fly.MachineEvent {
-	if len(machine.Events) == 0 {
-		return nil
-	}
-
-	for _, event := range machine.Events {
-		if event.Type == "start" {
+		if event.Type == eventType {
 			return event
 		}
 	}
