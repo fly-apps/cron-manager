@@ -12,7 +12,8 @@ import (
 func main() {
 	logger := cron.SetupLogging()
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	store, err := cron.NewStore(cron.DefaultStorePath)
 	if err != nil {

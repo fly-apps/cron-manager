@@ -8,8 +8,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func ProcessJob(ctx context.Context, log *logrus.Logger, store *Store, scheduleID int) error {
-	schedule, err := store.FindSchedule(scheduleID)
+func ProcessJob(ctx context.Context, log *logrus.Logger, store *Store, scheduleID int) (err error) {
+	schedule, err := store.FindSchedule(ctx, scheduleID)
 	if err != nil {
 		return err
 	}
@@ -18,7 +18,7 @@ func ProcessJob(ctx context.Context, log *logrus.Logger, store *Store, scheduleI
 		return fmt.Errorf("failed to prepare job: %w", err)
 	}
 
-	job, err := store.CreateJob(schedule.ID)
+	job, err := store.CreateJob(ctx, schedule.ID)
 	if err != nil {
 		return fmt.Errorf("failed to create job: %w", err)
 	}
@@ -33,8 +33,8 @@ func ProcessJob(ctx context.Context, log *logrus.Logger, store *Store, scheduleI
 	defer func() {
 		if err != nil {
 			logger.WithError(err).Error("job processing failed")
-			if err := store.FailJob(job.ID, 1, err.Error()); err != nil {
-				logger.WithError(err).Error("failed to update job status")
+			if failErr := store.FailJob(ctx, job.ID, 1, err.Error()); failErr != nil {
+				logger.WithError(failErr).Error("failed to update job status")
 			}
 		}
 	}()
@@ -48,11 +48,9 @@ func ProcessJob(ctx context.Context, log *logrus.Logger, store *Store, scheduleI
 
 	// Provision machine to run the job
 	machine, err := client.MachineProvision(ctx, schedule, job)
-	if err != nil {
-		if machine != nil {
-			if err := client.MachineDestroy(ctx, machine); err != nil {
-				logger.Warnf("failed to destroy machine %s: %s", machine.ID, err)
-			}
+	if err != nil && machine != nil {
+		if destroyErr := client.MachineDestroy(ctx, machine); destroyErr != nil {
+			logger.Warnf("failed to destroy machine %s: %s", machine.ID, destroyErr)
 		}
 		return fmt.Errorf("failed to provision machine: %w", err)
 	}
@@ -60,7 +58,7 @@ func ProcessJob(ctx context.Context, log *logrus.Logger, store *Store, scheduleI
 	logger = logger.WithField("machine-id", machine.ID)
 
 	// Set the job status to running
-	if err := store.UpdateJobStatus(job.ID, JobStatusRunning); err != nil {
+	if err := store.UpdateJobStatus(ctx, job.ID, JobStatusRunning); err != nil {
 		return fmt.Errorf("failed to update job status: %w", err)
 	}
 

@@ -47,7 +47,7 @@ func (c *FlapsClient) MachineProvision(ctx context.Context, schedule *Schedule, 
 		return nil, fmt.Errorf("failed to launch machine: %w", err)
 	}
 
-	if err := c.store.UpdateJobMachine(job.ID, machine.ID); err != nil {
+	if err := c.store.UpdateJobMachine(ctx, job.ID, machine.ID); err != nil {
 		return machine, fmt.Errorf("failed to update job machine: %w", err)
 	}
 

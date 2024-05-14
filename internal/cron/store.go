@@ -1,6 +1,7 @@
 package cron
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -73,7 +74,7 @@ func NewStore(storePath string) (*Store, error) {
 	return &Store{s}, nil
 }
 
-func InitializeStore(storePath, migrationsPath string) (*Store, error) {
+func InitializeStore(ctx context.Context, storePath, migrationsPath string) (*Store, error) {
 	store, err := NewStore(storePath)
 	if err != nil {
 		return nil, fmt.Errorf("error creating store: %w", err)
@@ -83,34 +84,35 @@ func InitializeStore(storePath, migrationsPath string) (*Store, error) {
 		migrationsPath = DefaultMigrationsPath
 	}
 
-	if err := store.setupDB(logrus.New(), migrationsPath); err != nil {
+	if err := store.setupDB(ctx, logrus.New(), migrationsPath); err != nil {
+		store.Close()
 		return nil, fmt.Errorf("error setting up database: %w", err)
 	}
 
 	return store, nil
 }
 
-func (s Store) FindSchedule(id int) (*Schedule, error) {
+func (s Store) FindSchedule(ctx context.Context, id int) (*Schedule, error) {
 	var rawSchedule RawSchedule
-	if err := s.DB.Get(&rawSchedule, "SELECT * FROM schedules WHERE id = ?", id); err != nil {
+	if err := s.DB.GetContext(ctx, &rawSchedule, "SELECT * FROM schedules WHERE id = ?", id); err != nil {
 		return nil, fmt.Errorf("error getting schedule: %w", err)
 	}
 
 	return convertToStandardSchedule(rawSchedule)
 }
 
-func (s Store) FindScheduleByName(name string) (*Schedule, error) {
+func (s Store) FindScheduleByName(ctx context.Context, name string) (*Schedule, error) {
 	var rawSchedule RawSchedule
-	if err := s.DB.Get(&rawSchedule, "SELECT * FROM schedules WHERE name = ?", name); err != nil {
+	if err := s.DB.GetContext(ctx, &rawSchedule, "SELECT * FROM schedules WHERE name = ?", name); err != nil {
 		return nil, fmt.Errorf("error getting schedule: %w", err)
 	}
 
 	return convertToStandardSchedule(rawSchedule)
 }
 
-func (s Store) ListEnabledSchedules() ([]Schedule, error) {
+func (s Store) ListEnabledSchedules(ctx context.Context) ([]Schedule, error) {
 	var rawSchedules []RawSchedule
-	if err := s.DB.Select(&rawSchedules, "SELECT * FROM schedules WHERE enabled = true"); err != nil {
+	if err := s.DB.SelectContext(ctx, &rawSchedules, "SELECT * FROM schedules WHERE enabled = true"); err != nil {
 		return nil, fmt.Errorf("error getting schedules: %w", err)
 	}
 
@@ -126,9 +128,9 @@ func (s Store) ListEnabledSchedules() ([]Schedule, error) {
 	return schedules, nil
 }
 
-func (s Store) ListSchedules() ([]Schedule, error) {
+func (s Store) ListSchedules(ctx context.Context) ([]Schedule, error) {
 	var rawSchedules []RawSchedule
-	if err := s.DB.Select(&rawSchedules, "SELECT * FROM schedules"); err != nil {
+	if err := s.DB.SelectContext(ctx, &rawSchedules, "SELECT * FROM schedules"); err != nil {
 		return nil, fmt.Errorf("error getting schedules: %w", err)
 	}
 
@@ -144,18 +146,18 @@ func (s Store) ListSchedules() ([]Schedule, error) {
 	return schedules, nil
 }
 
-func (s Store) FindJob(jobID string) (*Job, error) {
+func (s Store) FindJob(ctx context.Context, jobID string) (*Job, error) {
 	var job Job
-	if err := s.DB.Get(&job, "SELECT * FROM jobs WHERE id = ?", jobID); err != nil {
+	if err := s.DB.GetContext(ctx, &job, "SELECT * FROM jobs WHERE id = ?", jobID); err != nil {
 		return nil, fmt.Errorf("error getting job: %w", err)
 	}
 
 	return &job, nil
 }
 
-func (s Store) FindJobByMachineID(machineID string) (*Job, error) {
+func (s Store) FindJobByMachineID(ctx context.Context, machineID string) (*Job, error) {
 	var job Job
-	if err := s.DB.Get(&job, "SELECT * FROM jobs WHERE machine_id = ?", machineID); err != nil {
+	if err := s.DB.GetContext(ctx, &job, "SELECT * FROM jobs WHERE machine_id = ?", machineID); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
@@ -166,40 +168,40 @@ func (s Store) FindJobByMachineID(machineID string) (*Job, error) {
 	return &job, nil
 }
 
-func (s Store) ListJobs(scheduleID string, limit int) ([]Job, error) {
+func (s Store) ListJobs(ctx context.Context, scheduleID string, limit int) ([]Job, error) {
 	var jobs []Job
-	if err := s.DB.Select(&jobs, "SELECT * FROM jobs WHERE schedule_id = ? ORDER BY id DESC LIMIT ?", scheduleID, limit); err != nil {
+	if err := s.DB.SelectContext(ctx, &jobs, "SELECT * FROM jobs WHERE schedule_id = ? ORDER BY id DESC LIMIT ?", scheduleID, limit); err != nil {
 		return nil, fmt.Errorf("error getting jobs: %w", err)
 	}
 
 	return jobs, nil
 }
 
-func (s Store) ListJobsByStatus(status string) ([]Job, error) {
+func (s Store) ListJobsByStatus(ctx context.Context, status string) ([]Job, error) {
 	var jobs []Job
-	if err := s.DB.Select(&jobs, "SELECT * FROM jobs WHERE status = ?", status); err != nil {
+	if err := s.DB.SelectContext(ctx, &jobs, "SELECT * FROM jobs WHERE status = ?", status); err != nil {
 		return nil, fmt.Errorf("error getting jobs: %w", err)
 	}
 
 	return jobs, nil
 }
 
-func (s Store) ListReconcilableJobs() ([]Job, error) {
+func (s Store) ListReconcilableJobs(ctx context.Context) ([]Job, error) {
 	var jobs []Job
-	if err := s.DB.Select(&jobs, "SELECT * FROM jobs WHERE status IN (?,?)", JobStatusPending, JobStatusRunning); err != nil {
+	if err := s.DB.SelectContext(ctx, &jobs, "SELECT * FROM jobs WHERE status IN (?,?)", JobStatusPending, JobStatusRunning); err != nil {
 		return nil, err
 	}
 
 	return jobs, nil
 }
 
-func (s Store) CreateSchedule(sch Schedule) error {
+func (s Store) CreateSchedule(ctx context.Context, sch Schedule) error {
 	cfgBytes, err := json.Marshal(sch.Config)
 	if err != nil {
 		return fmt.Errorf("error marshalling machine config: %w", err)
 	}
 
-	_, err = s.DB.Exec("INSERT INTO schedules (name, app_name, schedule, command, command_timeout, region, enabled, config) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+	_, err = s.DB.ExecContext(ctx, "INSERT INTO schedules (name, app_name, schedule, command, command_timeout, region, enabled, config) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
 		sch.Name,
 		sch.AppName,
 		sch.Schedule,
@@ -213,13 +215,13 @@ func (s Store) CreateSchedule(sch Schedule) error {
 	return err
 }
 
-func (s Store) UpdateSchedule(sch Schedule) error {
+func (s Store) UpdateSchedule(ctx context.Context, sch Schedule) error {
 	cfgBytes, err := json.Marshal(sch.Config)
 	if err != nil {
 		return fmt.Errorf("error marshalling machine config: %w", err)
 	}
 
-	_, err = s.DB.Exec("UPDATE schedules SET app_name = ?, schedule = ?, command = ?, command_timeout = ?, region = ?, enabled = ?, config = ? WHERE name = ?",
+	_, err = s.DB.ExecContext(ctx, "UPDATE schedules SET app_name = ?, schedule = ?, command = ?, command_timeout = ?, region = ?, enabled = ?, config = ? WHERE name = ?",
 		sch.AppName,
 		sch.Schedule,
 		sch.Command,
@@ -233,19 +235,19 @@ func (s Store) UpdateSchedule(sch Schedule) error {
 	return err
 }
 
-func (s Store) DeleteSchedule(id string) error {
-	_, err := s.Exec("DELETE FROM schedules WHERE id = ?", id)
+func (s Store) DeleteSchedule(ctx context.Context, id string) error {
+	_, err := s.ExecContext(ctx, "DELETE FROM schedules WHERE id = ?", id)
 	if err != nil {
 		return fmt.Errorf("error deleting schedule: %w", err)
 	}
 
 	// Delete all jobs associated with the schedule
-	_, err = s.Exec("DELETE FROM jobs WHERE schedule_id = ?", id)
+	_, err = s.ExecContext(ctx, "DELETE FROM jobs WHERE schedule_id = ?", id)
 	return err
 }
 
-func (s Store) CreateJob(scheduleID int) (*Job, error) {
-	result, err := s.DB.Exec("INSERT INTO jobs (schedule_id, status, created_at, updated_at) VALUES ($1, $2, $3, $4)",
+func (s Store) CreateJob(ctx context.Context, scheduleID int) (*Job, error) {
+	result, err := s.DB.ExecContext(ctx, "INSERT INTO jobs (schedule_id, status, created_at, updated_at) VALUES ($1, $2, $3, $4)",
 		scheduleID,
 		JobStatusPending,
 		time.Now(),
@@ -262,7 +264,7 @@ func (s Store) CreateJob(scheduleID int) (*Job, error) {
 		return nil, fmt.Errorf("error getting last insert ID: %w", err)
 	}
 
-	job, err := s.FindJob(fmt.Sprint(id))
+	job, err := s.FindJob(ctx, fmt.Sprint(id))
 	if err != nil {
 		return nil, fmt.Errorf("error finding job: %w", err)
 	}
@@ -270,8 +272,8 @@ func (s Store) CreateJob(scheduleID int) (*Job, error) {
 	return job, nil
 }
 
-func (s Store) UpdateJobStatus(id int, status string) error {
-	_, err := s.Exec("UPDATE jobs SET status = ?, updated_at = ? WHERE id = ?",
+func (s Store) UpdateJobStatus(ctx context.Context, id int, status string) error {
+	_, err := s.ExecContext(ctx, "UPDATE jobs SET status = ?, updated_at = ? WHERE id = ?",
 		status,
 		time.Now(),
 		id,
@@ -279,8 +281,8 @@ func (s Store) UpdateJobStatus(id int, status string) error {
 	return err
 }
 
-func (s Store) UpdateJobMachine(id int, machineID string) error {
-	_, err := s.Exec("UPDATE jobs SET machine_id = ?, updated_at = ? WHERE id = ?",
+func (s Store) UpdateJobMachine(ctx context.Context, id int, machineID string) error {
+	_, err := s.ExecContext(ctx, "UPDATE jobs SET machine_id = ?, updated_at = ? WHERE id = ?",
 		machineID,
 		time.Now(),
 		id,
@@ -288,8 +290,8 @@ func (s Store) UpdateJobMachine(id int, machineID string) error {
 	return err
 }
 
-func (s Store) SetJobResult(id int, status string, exitCode int, stdout, stderr string) error {
-	_, err := s.Exec("UPDATE jobs SET exit_code = ?, stdout = ?, stderr = ?, updated_at = ? WHERE id = ?",
+func (s Store) SetJobResult(ctx context.Context, id int, status string, exitCode int, stdout, stderr string) error {
+	_, err := s.ExecContext(ctx, "UPDATE jobs SET exit_code = ?, stdout = ?, stderr = ?, updated_at = ? WHERE id = ?",
 		status,
 		exitCode,
 		stdout,
@@ -300,8 +302,8 @@ func (s Store) SetJobResult(id int, status string, exitCode int, stdout, stderr 
 	return err
 }
 
-func (s Store) FailJob(id int, exitCode int, stderr string) error {
-	_, err := s.Exec("UPDATE jobs SET status = ?, exit_code = ?, stderr = ?, updated_at = ?, finished_at = ? WHERE id = ?",
+func (s Store) FailJob(ctx context.Context, id int, exitCode int, stderr string) error {
+	_, err := s.ExecContext(ctx, "UPDATE jobs SET status = ?, exit_code = ?, stderr = ?, updated_at = ?, finished_at = ? WHERE id = ?",
 		JobStatusFailed,
 		exitCode,
 		stderr,
@@ -312,8 +314,8 @@ func (s Store) FailJob(id int, exitCode int, stderr string) error {
 	return err
 }
 
-func (s Store) CompleteJob(id int, exitCode int, stdout string) error {
-	_, err := s.Exec("UPDATE jobs SET status = ?, exit_code = ?, stdout = ?, updated_at = ?, finished_at = ? WHERE id = ?",
+func (s Store) CompleteJob(ctx context.Context, id int, exitCode int, stdout string) error {
+	_, err := s.ExecContext(ctx, "UPDATE jobs SET status = ?, exit_code = ?, stdout = ?, updated_at = ?, finished_at = ? WHERE id = ?",
 		JobStatusCompleted,
 		exitCode,
 		stdout,
@@ -343,12 +345,12 @@ func convertToStandardSchedule(raw RawSchedule) (*Schedule, error) {
 	}, nil
 }
 
-func (s Store) setupDB(log *logrus.Logger, migrationDirPath string) error {
+func (s Store) setupDB(ctx context.Context, log *logrus.Logger, migrationDirPath string) error {
 	migrations := &migrate.FileMigrationSource{
 		Dir: migrationDirPath,
 	}
 
-	n, err := migrate.Exec(s.DB.DB, "sqlite3", migrations, migrate.Up)
+	n, err := migrate.ExecContext(ctx, s.DB.DB, "sqlite3", migrations, migrate.Up)
 	if err != nil {
 		return fmt.Errorf("error applying migrations: %w", err)
 	}

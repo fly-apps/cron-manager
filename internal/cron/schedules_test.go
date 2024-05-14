@@ -1,6 +1,7 @@
 package cron
 
 import (
+	"context"
 	"os"
 	"testing"
 
@@ -180,7 +181,7 @@ func TestReadSchedulesFromFile(t *testing.T) {
 func TestSyncSchedules(t *testing.T) {
 	log := logrus.New()
 
-	store, err := InitializeStore(testStorePath, "../../migrations")
+	store, err := InitializeStore(context.TODO(), testStorePath, "../../migrations")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -193,11 +194,11 @@ func TestSyncSchedules(t *testing.T) {
 		}
 		defer func() { _ = os.Remove(schedulesFile.Name()) }()
 
-		if err := SyncSchedules(store, log, schedulesFile.Name()); err != nil {
+		if err := SyncSchedules(context.TODO(), store, log, schedulesFile.Name()); err != nil {
 			t.Fatal(err)
 		}
 
-		schedules, err := store.ListSchedules()
+		schedules, err := store.ListSchedules(context.TODO())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -266,7 +267,7 @@ func TestSyncSchedules(t *testing.T) {
 		}
 		defer func() { _ = os.Remove(originalFile.Name()) }()
 
-		if err := SyncSchedules(store, log, originalFile.Name()); err != nil {
+		if err := SyncSchedules(context.TODO(), store, log, originalFile.Name()); err != nil {
 			t.Fatal(err)
 		}
 
@@ -276,11 +277,11 @@ func TestSyncSchedules(t *testing.T) {
 		}
 		defer func() { _ = os.Remove(schedulesFile.Name()) }()
 
-		if err := SyncSchedules(store, log, schedulesFile.Name()); err != nil {
+		if err := SyncSchedules(context.TODO(), store, log, schedulesFile.Name()); err != nil {
 			t.Fatal(err)
 		}
 
-		schedules, err := store.ListSchedules()
+		schedules, err := store.ListSchedules(context.TODO())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -349,11 +350,11 @@ func TestSyncSchedules(t *testing.T) {
 		}
 		defer func() { _ = os.Remove(schedulesFile.Name()) }()
 
-		if err := SyncSchedules(store, log, schedulesFile.Name()); err != nil {
+		if err := SyncSchedules(context.TODO(), store, log, schedulesFile.Name()); err != nil {
 			t.Fatal(err)
 		}
 
-		schedules, err := store.ListSchedules()
+		schedules, err := store.ListSchedules(context.TODO())
 		if err != nil {
 			t.Fatal(err)
 		}
