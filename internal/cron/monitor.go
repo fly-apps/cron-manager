@@ -26,7 +26,7 @@ func MonitorActiveJobs(ctx context.Context, store *Store, log *logrus.Logger) er
 			return ctx.Err()
 		case <-ticker.C:
 			// Find all active jobs
-			jobs, err := store.ListJobsByStatus(JobStatusRunning)
+			jobs, err := store.ListJobsByStatus(ctx, JobStatusRunning)
 			if err != nil {
 				return fmt.Errorf("failed to find active jobs: %w", err)
 			}
@@ -51,7 +51,7 @@ func MonitorActiveJobs(ctx context.Context, store *Store, log *logrus.Logger) er
 
 func evaluateJob(ctx context.Context, logger *logrus.Logger, store *Store, job Job) error {
 	// Fetch the associated schedule for the job
-	schedule, err := store.FindSchedule(job.ScheduleID)
+	schedule, err := store.FindSchedule(ctx, job.ScheduleID)
 	if err != nil {
 		return fmt.Errorf("failed to find schedule for job %d: %w", job.ID, err)
 	}
@@ -77,7 +77,7 @@ func evaluateJob(ctx context.Context, logger *logrus.Logger, store *Store, job J
 				// Machines are queryable up to 48 hours after they are destroyed.
 				// If the cron manager is shutdown or inactive for more than 48 hours, we will not be able to evaluate the result.
 				log.WithError(err).Errorf("failed to get machine %s: %v", job.MachineID.String, err)
-				if err := store.FailJob(job.ID, -1, "machine destroyed before we could interpret the results"); err != nil {
+				if err := store.FailJob(ctx, job.ID, -1, "machine destroyed before we could interpret the results"); err != nil {
 					log.WithError(err).Errorf("failed to update job %d status", job.ID)
 				}
 				return nil
@@ -110,12 +110,12 @@ func evaluateJob(ctx context.Context, logger *logrus.Logger, store *Store, job J
 		if event.Request != nil && event.Request.ExitEvent != nil {
 			exitCode := event.Request.ExitEvent.ExitCode
 			if exitCode != 0 {
-				if err := store.FailJob(job.ID, exitCode, ""); err != nil {
+				if err := store.FailJob(ctx, job.ID, exitCode, ""); err != nil {
 					log.WithError(err).Errorf("failed to update job %d status", job.ID)
 				}
 				log.Infof("Job failed with exit code %d", exitCode)
 			} else {
-				if err := store.CompleteJob(job.ID, exitCode, ""); err != nil {
+				if err := store.CompleteJob(ctx, job.ID, exitCode, ""); err != nil {
 					log.WithError(err).Errorf("failed to update job %d status", job.ID)
 				}
 				log.Infof("Job completed successfully")
@@ -137,7 +137,7 @@ func evaluateJob(ctx context.Context, logger *logrus.Logger, store *Store, job J
 				return fmt.Errorf("failed to destroy machine %s: %w", machine.ID, err)
 			}
 
-			if err := store.FailJob(job.ID, -1, err); err != nil {
+			if err := store.FailJob(ctx, job.ID, -1, err); err != nil {
 				log.WithError(err).Errorf("failed to update job %d status", job.ID)
 			}
 		}

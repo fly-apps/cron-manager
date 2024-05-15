@@ -53,7 +53,7 @@ var listCmd = &cobra.Command{
 			return fmt.Errorf("failed to create store: %w", err)
 		}
 
-		schedules, err := store.ListSchedules()
+		schedules, err := store.ListSchedules(cmd.Context())
 		if err != nil {
 			return fmt.Errorf("failed to list schedules: %w", err)
 		}
@@ -106,7 +106,7 @@ var processJobCmd = &cobra.Command{
 			return fmt.Errorf("failed to create store: %w", err)
 		}
 
-		schedule, err := store.FindSchedule(scheduleID)
+		schedule, err := store.FindSchedule(cmd.Context(), scheduleID)
 		if err != nil {
 			return fmt.Errorf("failed to find schedule: %w", err)
 		}
@@ -128,7 +128,7 @@ var listJobsCmd = &cobra.Command{
 			return fmt.Errorf("failed to create store: %w", err)
 		}
 
-		jobs, err := store.ListJobs(scheduleID, 10)
+		jobs, err := store.ListJobs(cmd.Context(), scheduleID, 10)
 		if err != nil {
 			return fmt.Errorf("failed to list jobs: %w", err)
 		}
@@ -184,7 +184,7 @@ var showJobCmd = &cobra.Command{
 			return fmt.Errorf("failed to create store: %w", err)
 		}
 
-		job, err := store.FindJob(jobID)
+		job, err := store.FindJob(cmd.Context(), jobID)
 		if err != nil {
 			return fmt.Errorf("failed to find job: %w", err)
 		}
@@ -254,7 +254,7 @@ var syncCrontabCmd = &cobra.Command{
 			return fmt.Errorf("failed to create store: %w", err)
 		}
 
-		if err := cron.SyncSchedules(store, log, cron.DefaultSchedulesFilePath); err != nil {
+		if err := cron.SyncSchedules(cmd.Context(), store, log, cron.DefaultSchedulesFilePath); err != nil {
 			return fmt.Errorf("failed to sync crontab: %w", err)
 		}
 

@@ -13,7 +13,9 @@ type triggerJobRequest struct {
 }
 
 func handleJobTrigger(w http.ResponseWriter, r *http.Request) {
-	log := r.Context().Value(loggerKey).(*logrus.Logger)
+	ctx := r.Context()
+
+	log := ctx.Value(loggerKey).(*logrus.Logger)
 
 	var req triggerJobRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -21,7 +23,11 @@ func handleJobTrigger(w http.ResponseWriter, r *http.Request) {
 		renderErr(w, err)
 		return
 	}
-	defer func() { _ = r.Body.Close() }()
+	defer func() {
+		if err := r.Body.Close(); err != nil {
+			log.WithError(err).Error("failed to close request body")
+		}
+	}()
 
 	store, err := cron.NewStore(cron.DefaultStorePath)
 	if err != nil {
@@ -29,11 +35,16 @@ func handleJobTrigger(w http.ResponseWriter, r *http.Request) {
 		renderErr(w, err)
 		return
 	}
-	defer func() { _ = store.Close() }()
+	defer func() {
+		if err := store.Close(); err != nil {
+			log.WithError(err).Error("failed to close store")
+		}
+	}()
 
-	if err := cron.ProcessJob(r.Context(), log, store, req.ID); err != nil {
+	if err := cron.ProcessJob(ctx, log, store, req.ID); err != nil {
 		log.WithError(err).Error("failed to process job")
 		renderErr(w, err)
 		return
 	}
+
 }

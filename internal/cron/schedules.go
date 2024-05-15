@@ -1,6 +1,7 @@
 package cron
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -17,7 +18,7 @@ const (
 )
 
 // SyncSchedules reads schedules from a file and syncs them with the store
-func SyncSchedules(store *Store, log *logrus.Logger, schedulesFilePath string) error {
+func SyncSchedules(ctx context.Context, store *Store, log *logrus.Logger, schedulesFilePath string) error {
 	if schedulesFilePath == "" {
 		schedulesFilePath = DefaultSchedulesFilePath
 	}
@@ -27,7 +28,7 @@ func SyncSchedules(store *Store, log *logrus.Logger, schedulesFilePath string) e
 		return err
 	}
 
-	existingSchedules, err := store.ListSchedules()
+	existingSchedules, err := store.ListSchedules(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to list schedules: %w", err)
 	}
@@ -44,7 +45,7 @@ func SyncSchedules(store *Store, log *logrus.Logger, schedulesFilePath string) e
 
 		record := findScheduleByName(existingSchedules, schedule.Name)
 		if record == nil {
-			if err := store.CreateSchedule(schedule); err != nil {
+			if err := store.CreateSchedule(ctx, schedule); err != nil {
 				return fmt.Errorf("failed to create schedule: %w", err)
 			}
 
@@ -53,7 +54,7 @@ func SyncSchedules(store *Store, log *logrus.Logger, schedulesFilePath string) e
 		}
 
 		// If schedule exists, update it
-		if err := store.UpdateSchedule(schedule); err != nil {
+		if err := store.UpdateSchedule(ctx, schedule); err != nil {
 			return fmt.Errorf("failed to update schedule: %w", err)
 		}
 
@@ -64,7 +65,7 @@ func SyncSchedules(store *Store, log *logrus.Logger, schedulesFilePath string) e
 	// Delete schedules that are no longer present
 	for _, schedule := range existingSchedules {
 		if _, exists := presentSchedules[schedule.Name]; !exists {
-			if err := store.DeleteSchedule(fmt.Sprint(schedule.ID)); err != nil {
+			if err := store.DeleteSchedule(ctx, fmt.Sprint(schedule.ID)); err != nil {
 				return fmt.Errorf("failed to delete schedule: %w", err)
 			}
 			log.Infof("deleted schedule %s", schedule.Name)
@@ -75,8 +76,8 @@ func SyncSchedules(store *Store, log *logrus.Logger, schedulesFilePath string) e
 }
 
 // SyncCrontab queries the store for enabled schedules and writes them to the crontab file
-func SyncCrontab(store *Store, log *logrus.Logger) error {
-	schedules, err := store.ListEnabledSchedules()
+func SyncCrontab(ctx context.Context, store *Store, log *logrus.Logger) error {
+	schedules, err := store.ListEnabledSchedules(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to list schedules: %w", err)
 	}
