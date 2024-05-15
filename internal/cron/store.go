@@ -85,7 +85,7 @@ func InitializeStore(ctx context.Context, storePath, migrationsPath string) (*St
 	}
 
 	if err := store.setupDB(ctx, logrus.New(), migrationsPath); err != nil {
-		store.Close()
+		_ = store.Close()
 		return nil, fmt.Errorf("error setting up database: %w", err)
 	}
 
