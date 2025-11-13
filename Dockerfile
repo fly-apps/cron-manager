@@ -1,5 +1,5 @@
 # Start from Ubuntu 20.04 as the base for the build stage to ensure compatibility
-FROM golang:1.21.0 as builder
+FROM golang:1.25.4 as builder
 
 WORKDIR /app
 
