@@ -1,18 +1,51 @@
 {
   "schedules": [
     {
-      "name": "dsm-station-refresh",
-      "app": "dsm",
-      "image":"registry.fly.io/tri-cron-manager:dsm",
-      "command": "python -m tri.cli.main dsm run --refresh_stations=True",
-      "schedule": "0 0 * * 0"
+        "name": "dsm-station-refresh",
+        "app": "dsm",
+        "command": "python -m tri.cli.main dsm run --refresh_stations=True",
+        "schedule": "0 0 * * 0",
+        "config": {
+            "metadata": {
+                "fly_process_group": "cron"
+            },
+            "auto_destroy": true,
+            "disable_machine_autostart": true,
+            "guest": {
+                "cpu_kind": "shared",
+                "cpus": 1,
+                "memory_mb": 512
+            },
+            "image":"registry.fly.io/tri-cron-manager:dsm",
+            "restart": {
+                "max_retries": 1,
+                "policy": "no"
+            }
+        }
     },
     {
       "name": "dsm-daily",
       "app": "dsm",
       "image":"registry.fly.io/tri-cron-manager:dsm",
       "command": "python -m tri.cli.main dsm run --daily=True",
-      "schedule": "0 6 * * *"
+      "schedule": "0 6 * * *",
+      "config": {
+            "metadata": {
+                "fly_process_group": "cron"
+            },
+            "auto_destroy": true,
+            "disable_machine_autostart": true,
+            "guest": {
+                "cpu_kind": "shared",
+                "cpus": 1,
+                "memory_mb": 512
+            },
+            "image":"registry.fly.io/tri-cron-manager:dsm",
+            "restart": {
+                "max_retries": 1,
+                "policy": "no"
+            }
+        }
     }
   ]
 }
