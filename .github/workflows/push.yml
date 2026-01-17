@@ -18,7 +18,7 @@ jobs:
 
       - uses: actions/setup-go@v3
         with:
-          go-version: '1.21'
+          go-version: '1.25'
           go-version-file: 'go.mod'
           cache: true
 
@@ -36,7 +36,7 @@ jobs:
 
       - uses: actions/setup-go@v3
         with:
-          go-version: '1.21'
+          go-version: '1.25'
           go-version-file: 'go.mod'
           cache: true
 
@@ -52,11 +52,11 @@ jobs:
 
       - uses: actions/setup-go@v3
         with:
-          go-version: '1.21'
+          go-version: '1.25'
           go-version-file: 'go.mod'
           cache: true
 
-      - uses: dominikh/staticcheck-action@v1.2.0
+      - uses: dominikh/staticcheck-action@v1.4.0
         with:
           install-go: false
 
@@ -68,7 +68,7 @@ jobs:
 
       - uses: actions/setup-go@v3
         with:
-          go-version: '1.21'
+          go-version: '1.25'
           go-version-file: 'go.mod'
           cache: true
 

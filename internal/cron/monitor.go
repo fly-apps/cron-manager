@@ -138,7 +138,7 @@ func evaluateJob(ctx context.Context, logger *logrus.Logger, store *Store, job J
 				machine.ID,
 				schedule.CommandTimeout)
 
-			log.Warnf(err)
+			log.Warn(err)
 
 			if err := client.MachineDestroy(ctx, machine); err != nil {
 				return fmt.Errorf("failed to destroy machine %s: %w", machine.ID, err)

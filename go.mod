@@ -1,6 +1,6 @@
 module github.com/fly-apps/cron-manager
 
-go 1.21.0
+go 1.25.4
 
 require (
 	github.com/go-chi/chi v1.5.5
@@ -37,14 +37,14 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/superfly/graphql v0.2.4 // indirect
 	github.com/superfly/macaroon v0.2.12 // indirect
-	github.com/vektah/gqlparser/v2 v2.5.1 // indirect
+	github.com/vektah/gqlparser/v2 v2.5.15 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.3.5 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.48.0 // indirect
 	go.opentelemetry.io/otel v1.23.1 // indirect
 	go.opentelemetry.io/otel/metric v1.23.1 // indirect
 	go.opentelemetry.io/otel/trace v1.23.1 // indirect
-	golang.org/x/crypto v0.19.0 // indirect
+	golang.org/x/crypto v0.45.0 // indirect
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9 // indirect
-	golang.org/x/sys v0.17.0 // indirect
+	golang.org/x/sys v0.38.0 // indirect
 )
