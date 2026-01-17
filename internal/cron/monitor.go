@@ -83,6 +83,8 @@ func evaluateJob(ctx context.Context, logger *logrus.Logger, store *Store, job J
 			} else {
 				log.WithError(err).Errorf("failed to get machine %s", job.MachineID.String)
 			}
+		} else {
+			log.WithError(err).Errorf("failed to get machine %s: %v", job.MachineID.String, err)
 		}
 
 		return nil
