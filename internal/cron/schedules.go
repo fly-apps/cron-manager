@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strings"
 
 	"github.com/sirupsen/logrus"
 )
@@ -13,9 +15,15 @@ import (
 const (
 	DefaultSchedulesFilePath = "/usr/local/share/schedules.json"
 	executeCommand           = "/usr/local/bin/process-job"
-	cronFilePath             = "/data/crontab"
+	defaultCronFilePath      = "/data/crontab"
 	defaultCommandTimeout    = 30
 )
+
+type crontabRunner func(path string) ([]byte, error)
+
+func defaultRunCrontab(path string) ([]byte, error) {
+	return exec.Command("crontab", path).CombinedOutput()
+}
 
 // SyncSchedules reads schedules from a file and syncs them with the store
 func SyncSchedules(ctx context.Context, store *Store, log *logrus.Logger, schedulesFilePath string) error {
@@ -77,16 +85,27 @@ func SyncSchedules(ctx context.Context, store *Store, log *logrus.Logger, schedu
 
 // SyncCrontab queries the store for enabled schedules and writes them to the crontab file
 func SyncCrontab(ctx context.Context, store *Store, log *logrus.Logger) error {
+	return syncCrontab(ctx, store, log, defaultCronFilePath, defaultRunCrontab)
+}
+
+func syncCrontab(ctx context.Context, store *Store, log *logrus.Logger, cronFilePath string, runCrontab crontabRunner) error {
 	schedules, err := store.ListEnabledSchedules(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to list schedules: %w", err)
 	}
 
-	file, err := os.Create(cronFilePath)
-	if err != nil {
-		return fmt.Errorf("failed to open crontab file: %w", err)
+	// Write to a temp file first so a single invalid schedule doesn't clobber the
+	// last known-good crontab file.
+	cronDir := filepath.Dir(cronFilePath)
+	if err := os.MkdirAll(cronDir, 0o755); err != nil {
+		return fmt.Errorf("failed to create crontab dir: %w", err)
 	}
-	defer func() { _ = file.Close() }()
+
+	file, err := os.CreateTemp(cronDir, "crontab-*")
+	if err != nil {
+		return fmt.Errorf("failed to create temp crontab file: %w", err)
+	}
+	defer func() { _ = os.Remove(file.Name()) }()
 
 	for _, schedule := range schedules {
 		entry := fmt.Sprintf("%s %s %d\n", schedule.Schedule, executeCommand, schedule.ID)
@@ -96,13 +115,31 @@ func SyncCrontab(ctx context.Context, store *Store, log *logrus.Logger) error {
 		}
 	}
 
-	if err := exec.Command("crontab", cronFilePath).Run(); err != nil {
+	if err := file.Sync(); err != nil {
+		return fmt.Errorf("failed to sync temp crontab file: %w", err)
+	}
+	if err := file.Close(); err != nil {
+		return fmt.Errorf("failed to close temp crontab file: %w", err)
+	}
+
+	tempPath := file.Name()
+	if out, err := runCrontab(tempPath); err != nil {
+		msg := strings.TrimSpace(string(out))
+		if msg != "" {
+			log.WithError(err).Errorf("crontab install failed: %s", msg)
+			return fmt.Errorf("failed to sync crontab: %w: %s", err, msg)
+		}
+		log.WithError(err).Error("crontab install failed")
 		return fmt.Errorf("failed to sync crontab: %w", err)
 	}
 
-	log.Printf("Synced %d schedule(s) to crontab", len(schedules))
+	// Best-effort: keep the installed crontab content at the known path for debugging/ops.
+	if err := os.Rename(tempPath, cronFilePath); err != nil {
+		log.WithError(err).Warnf("failed to replace %s with generated crontab", cronFilePath)
+	}
 
-	return file.Sync()
+	log.Printf("Synced %d schedule(s) to crontab", len(schedules))
+	return nil
 }
 
 func findScheduleByName(schedules []Schedule, name string) *Schedule {
