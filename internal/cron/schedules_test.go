@@ -2,7 +2,10 @@ package cron
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -361,6 +364,77 @@ func TestSyncSchedules(t *testing.T) {
 
 		if len(schedules) != 0 {
 			t.Fatalf("expected 0 schedules, got %d", len(schedules))
+		}
+	})
+}
+
+func TestSyncCrontab(t *testing.T) {
+	ctx := context.TODO()
+	log := logrus.New()
+
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "test.db")
+	store, err := InitializeStore(ctx, dbPath, "../../migrations")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = store.Close() }()
+
+	if err := store.CreateSchedule(ctx, Schedule{
+		Name:           "test",
+		AppName:        "app",
+		Schedule:       "* * * * *",
+		Command:        "uptime",
+		CommandTimeout: 60,
+		Region:         "iad",
+		Enabled:        true,
+		Config:         fly.MachineConfig{},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	cronPath := filepath.Join(tmpDir, "crontab")
+	t.Run("does not clobber on install failure", func(t *testing.T) {
+		if err := os.WriteFile(cronPath, []byte("KNOWN_GOOD\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		runCrontab := func(path string) ([]byte, error) {
+			return []byte("bad minute"), fmt.Errorf("exit status 1")
+		}
+
+		if err := syncCrontab(ctx, store, log, cronPath, runCrontab); err == nil {
+			t.Fatalf("expected error")
+		}
+
+		b, err := os.ReadFile(cronPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(b) != "KNOWN_GOOD\n" {
+			t.Fatalf("expected existing crontab to remain unchanged, got %q", string(b))
+		}
+	})
+
+	t.Run("replaces on success", func(t *testing.T) {
+		runCrontab := func(path string) ([]byte, error) {
+			return nil, nil
+		}
+
+		if err := syncCrontab(ctx, store, log, cronPath, runCrontab); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		b, err := os.ReadFile(cronPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := string(b)
+		if got == "" {
+			t.Fatalf("expected crontab file to be written")
+		}
+		if wantSub := executeCommand; !strings.Contains(got, wantSub) {
+			t.Fatalf("expected crontab to contain %q, got %q", wantSub, got)
 		}
 	})
 }
