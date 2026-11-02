@@ -709,7 +709,7 @@
     {
         "name": "storm-reports-run",
         "app_name": "storm-reports",
-        "command": "python -m tri.cli.main storm_reports run",
+        "command": "storm_reports run",
         "command_timeout": 300,
         "schedule": "0 6 * * *",
         "region": "lax",
@@ -735,7 +735,7 @@
     {
         "name": "storm-reports-backfill-recent",
         "app_name": "storm-reports",
-        "command": "python -m tri.cli.main storm_reports backfill_recent",
+        "command": "storm_reports backfill_recent",
         "command_timeout": 900,
         "schedule": "0 7 * * 0",
         "region": "lax",
