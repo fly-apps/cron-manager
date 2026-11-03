@@ -1,0 +1,761 @@
+[
+    {
+        "name": "dsm-migrate",
+        "app_name": "dsm",
+        "command": "alembic -c  ingestors/dsm/alembic.ini upgrade head",
+        "enabled": false,
+        "config": {
+            "metadata": {
+                "fly_process_group": "cron"
+            },
+            "auto_destroy": true,
+            "disable_machine_autostart": true,
+            "guest": {
+                "cpu_kind": "shared",
+                "cpus": 1,
+                "memory_mb": 512
+            },
+            "image": "registry.fly.io/dsm:deployment-01KFEKBK1F5PAG8ZQXXT4JT42Z",
+            "restart": {
+                "max_retries": 1,
+                "policy": "no"
+            }
+        }
+    },
+    {
+        "name": "dsm-station-refresh",
+        "app_name": "dsm",
+        "command": "python -m tri.cli.main dsm run --refresh_stations=True",
+        "command_timeout": 300,
+        "schedule": "0 0 * * 0",
+        "enabled": true,
+        "config": {
+            "metadata": {
+                "fly_process_group": "cron"
+            },
+            "auto_destroy": true,
+            "disable_machine_autostart": true,
+            "guest": {
+                "cpu_kind": "shared",
+                "cpus": 1,
+                "memory_mb": 512
+            },
+            "image": "registry.fly.io/dsm:deployment-01KFEKBK1F5PAG8ZQXXT4JT42Z",
+            "restart": {
+                "max_retries": 1,
+                "policy": "no"
+            }
+        }
+    },
+    {
+        "name": "dsm-daily",
+        "app_name": "dsm",
+        "command": "python -m tri.cli.main dsm run --daily=True",
+        "schedule": "0 6 * * *",
+        "enabled": true,
+        "config": {
+            "metadata": {
+                "fly_process_group": "cron"
+            },
+            "auto_destroy": true,
+            "disable_machine_autostart": true,
+            "guest": {
+                "cpu_kind": "shared",
+                "cpus": 1,
+                "memory_mb": 512
+            },
+            "image": "registry.fly.io/dsm:deployment-01KFEKBK1F5PAG8ZQXXT4JT42Z",
+            "restart": {
+                "max_retries": 1,
+                "policy": "no"
+            }
+        }
+    }
+    ,{
+        "name": "gfs-migrate",
+        "app_name": "gfs",
+        "command": "alembic -c ingestors/gfs/alembic.ini upgrade head",
+        "region": "lax",
+        "enabled": false,
+        "config": {
+            "metadata": {
+                "fly_process_group": "cron"
+            },
+            "auto_destroy": true,
+            "disable_machine_autostart": true,
+            "guest": {
+                "cpu_kind": "shared",
+                "cpus": 1,
+                "memory_mb": 512
+            },
+            "image": "registry.fly.io/gfs:latest",
+            "restart": {
+                "max_retries": 1,
+                "policy": "no"
+            }
+        }
+    },
+    {
+        "name": "gfs-download-subset-00z",
+        "app_name": "gfs",
+        "command": "python -m tri.cli.main gfs run --download_subset=True --cycle=0",
+        "command_timeout": 1800,
+        "schedule": "30 5 * * *",
+        "region": "lax",
+        "enabled": true,
+        "config": {
+            "metadata": {
+                "fly_process_group": "cron"
+            },
+            "auto_destroy": true,
+            "disable_machine_autostart": true,
+            "guest": {
+                "cpu_kind": "shared",
+                "cpus": 1,
+                "memory_mb": 512
+            },
+            "image": "registry.fly.io/gfs:latest",
+            "mounts": [
+                {
+                    "volume": "vol_r1lkyx3gowdy78p4",
+                    "path": "/data/gfs"
+                }
+            ],
+            "restart": {
+                "max_retries": 1,
+                "policy": "no"
+            }
+        }
+    },
+    {
+        "name": "gfs-download-subset-06z",
+        "app_name": "gfs",
+        "command": "python -m tri.cli.main gfs run --download_subset=True --cycle=6",
+        "command_timeout": 1800,
+        "schedule": "30 11 * * *",
+        "region": "lax",
+        "enabled": true,
+        "config": {
+            "metadata": {
+                "fly_process_group": "cron"
+            },
+            "auto_destroy": true,
+            "disable_machine_autostart": true,
+            "guest": {
+                "cpu_kind": "shared",
+                "cpus": 1,
+                "memory_mb": 512
+            },
+            "image": "registry.fly.io/gfs:latest",
+            "mounts": [
+                {
+                    "volume": "vol_r1lkyx3gowdy78p4",
+                    "path": "/data/gfs"
+                }
+            ],
+            "restart": {
+                "max_retries": 1,
+                "policy": "no"
+            }
+        }
+    },
+    {
+        "name": "gfs-download-subset-12z",
+        "app_name": "gfs",
+        "command": "python -m tri.cli.main gfs run --download_subset=True --cycle=12",
+        "command_timeout": 1800,
+        "schedule": "30 17 * * *",
+        "region": "lax",
+        "enabled": true,
+        "config": {
+            "metadata": {
+                "fly_process_group": "cron"
+            },
+            "auto_destroy": true,
+            "disable_machine_autostart": true,
+            "guest": {
+                "cpu_kind": "shared",
+                "cpus": 1,
+                "memory_mb": 512
+            },
+            "image": "registry.fly.io/gfs:latest",
+            "mounts": [
+                {
+                    "volume": "vol_r1lkyx3gowdy78p4",
+                    "path": "/data/gfs"
+                }
+            ],
+            "restart": {
+                "max_retries": 1,
+                "policy": "no"
+            }
+        }
+    },
+    {
+        "name": "gfs-download-subset-18z",
+        "app_name": "gfs",
+        "command": "python -m tri.cli.main gfs run --download_subset=True --cycle=18",
+        "command_timeout": 1800,
+        "schedule": "30 23 * * *",
+        "region": "lax",
+        "enabled": true,
+        "config": {
+            "metadata": {
+                "fly_process_group": "cron"
+            },
+            "auto_destroy": true,
+            "disable_machine_autostart": true,
+            "guest": {
+                "cpu_kind": "shared",
+                "cpus": 1,
+                "memory_mb": 512
+            },
+            "image": "registry.fly.io/gfs:latest",
+            "mounts": [
+                {
+                    "volume": "vol_r1lkyx3gowdy78p4",
+                    "path": "/data/gfs"
+                }
+            ],
+            "restart": {
+                "max_retries": 1,
+                "policy": "no"
+            }
+        }
+    },
+    {
+        "name": "gfs-parse-subset-00z",
+        "app_name": "gfs",
+        "command": "python -m tri.cli.main gfs run --parse_subset=True --cycle=0",
+        "command_timeout": 600,
+        "schedule": "30 7 * * *",
+        "region": "lax",
+        "enabled": true,
+        "config": {
+            "metadata": {
+                "fly_process_group": "cron"
+            },
+            "auto_destroy": true,
+            "disable_machine_autostart": true,
+            "guest": {
+                "cpu_kind": "shared",
+                "cpus": 2,
+                "memory_mb": 3072
+            },
+            "image": "registry.fly.io/gfs:latest",
+            "mounts": [
+                {
+                    "volume": "vol_r1lkyx3gowdy78p4",
+                    "path": "/data/gfs"
+                }
+            ],
+            "restart": {
+                "max_retries": 1,
+                "policy": "no"
+            }
+        }
+    },
+    {
+        "name": "gfs-parse-subset-06z",
+        "app_name": "gfs",
+        "command": "python -m tri.cli.main gfs run --parse_subset=True --cycle=6",
+        "command_timeout": 600,
+        "schedule": "30 13 * * *",
+        "region": "lax",
+        "enabled": true,
+        "config": {
+            "metadata": {
+                "fly_process_group": "cron"
+            },
+            "auto_destroy": true,
+            "disable_machine_autostart": true,
+            "guest": {
+                "cpu_kind": "shared",
+                "cpus": 2,
+                "memory_mb": 3072
+            },
+            "image": "registry.fly.io/gfs:latest",
+            "mounts": [
+                {
+                    "volume": "vol_r1lkyx3gowdy78p4",
+                    "path": "/data/gfs"
+                }
+            ],
+            "restart": {
+                "max_retries": 1,
+                "policy": "no"
+            }
+        }
+    },
+    {
+        "name": "gfs-parse-subset-12z",
+        "app_name": "gfs",
+        "command": "python -m tri.cli.main gfs run --parse_subset=True --cycle=12",
+        "command_timeout": 600,
+        "schedule": "30 19 * * *",
+        "region": "lax",
+        "enabled": true,
+        "config": {
+            "metadata": {
+                "fly_process_group": "cron"
+            },
+            "auto_destroy": true,
+            "disable_machine_autostart": true,
+            "guest": {
+                "cpu_kind": "shared",
+                "cpus": 2,
+                "memory_mb": 3072
+            },
+            "image": "registry.fly.io/gfs:latest",
+            "mounts": [
+                {
+                    "volume": "vol_r1lkyx3gowdy78p4",
+                    "path": "/data/gfs"
+                }
+            ],
+            "restart": {
+                "max_retries": 1,
+                "policy": "no"
+            }
+        }
+    },
+    {
+        "name": "gfs-parse-subset-18z",
+        "app_name": "gfs",
+        "command": "python -m tri.cli.main gfs run --parse_subset=True --cycle=18",
+        "command_timeout": 600,
+        "schedule": "30 1 * * *",
+        "region": "lax",
+        "enabled": true,
+        "config": {
+            "metadata": {
+                "fly_process_group": "cron"
+            },
+            "auto_destroy": true,
+            "disable_machine_autostart": true,
+            "guest": {
+                "cpu_kind": "shared",
+                "cpus": 2,
+                "memory_mb": 3072
+            },
+            "image": "registry.fly.io/gfs:latest",
+            "mounts": [
+                {
+                    "volume": "vol_r1lkyx3gowdy78p4",
+                    "path": "/data/gfs"
+                }
+            ],
+            "restart": {
+                "max_retries": 1,
+                "policy": "no"
+            }
+        }
+    },
+    {
+        "name": "gfs-download-conus-00z",
+        "app_name": "gfs",
+        "command": "python -m tri.cli.main gfs run --download_conus=True --cycle=0",
+        "command_timeout": 1800,
+        "schedule": "0 7 * * *",
+        "region": "lax",
+        "enabled": true,
+        "config": {
+            "metadata": {
+                "fly_process_group": "cron"
+            },
+            "auto_destroy": true,
+            "disable_machine_autostart": true,
+            "guest": {
+                "cpu_kind": "shared",
+                "cpus": 1,
+                "memory_mb": 512
+            },
+            "image": "registry.fly.io/gfs:latest",
+            "mounts": [
+                {
+                    "volume": "vol_r1lkyx3gowdy78p4",
+                    "path": "/data/gfs"
+                }
+            ],
+            "restart": {
+                "max_retries": 1,
+                "policy": "no"
+            }
+        }
+    },
+    {
+        "name": "gfs-download-conus-06z",
+        "app_name": "gfs",
+        "command": "python -m tri.cli.main gfs run --download_conus=True --cycle=6",
+        "command_timeout": 1800,
+        "schedule": "0 13 * * *",
+        "region": "lax",
+        "enabled": true,
+        "config": {
+            "metadata": {
+                "fly_process_group": "cron"
+            },
+            "auto_destroy": true,
+            "disable_machine_autostart": true,
+            "guest": {
+                "cpu_kind": "shared",
+                "cpus": 1,
+                "memory_mb": 512
+            },
+            "image": "registry.fly.io/gfs:latest",
+            "mounts": [
+                {
+                    "volume": "vol_r1lkyx3gowdy78p4",
+                    "path": "/data/gfs"
+                }
+            ],
+            "restart": {
+                "max_retries": 1,
+                "policy": "no"
+            }
+        }
+    },
+    {
+        "name": "gfs-download-conus-12z",
+        "app_name": "gfs",
+        "command": "python -m tri.cli.main gfs run --download_conus=True --cycle=12",
+        "command_timeout": 1800,
+        "schedule": "0 19 * * *",
+        "region": "lax",
+        "enabled": true,
+        "config": {
+            "metadata": {
+                "fly_process_group": "cron"
+            },
+            "auto_destroy": true,
+            "disable_machine_autostart": true,
+            "guest": {
+                "cpu_kind": "shared",
+                "cpus": 1,
+                "memory_mb": 512
+            },
+            "image": "registry.fly.io/gfs:latest",
+            "mounts": [
+                {
+                    "volume": "vol_r1lkyx3gowdy78p4",
+                    "path": "/data/gfs"
+                }
+            ],
+            "restart": {
+                "max_retries": 1,
+                "policy": "no"
+            }
+        }
+    },
+    {
+        "name": "gfs-download-conus-18z",
+        "app_name": "gfs",
+        "command": "python -m tri.cli.main gfs run --download_conus=True --cycle=18",
+        "command_timeout": 1800,
+        "schedule": "0 1 * * *",
+        "region": "lax",
+        "enabled": true,
+        "config": {
+            "metadata": {
+                "fly_process_group": "cron"
+            },
+            "auto_destroy": true,
+            "disable_machine_autostart": true,
+            "guest": {
+                "cpu_kind": "shared",
+                "cpus": 1,
+                "memory_mb": 512
+            },
+            "image": "registry.fly.io/gfs:latest",
+            "mounts": [
+                {
+                    "volume": "vol_r1lkyx3gowdy78p4",
+                    "path": "/data/gfs"
+                }
+            ],
+            "restart": {
+                "max_retries": 1,
+                "policy": "no"
+            }
+        }
+    },
+    {
+        "name": "gfs-parse-conus-00z",
+        "app_name": "gfs",
+        "command": "python -m tri.cli.main gfs run --parse_conus=True --cycle=0",
+        "command_timeout": 600,
+        "schedule": "0 10 * * *",
+        "region": "lax",
+        "enabled": true,
+        "config": {
+            "metadata": {
+                "fly_process_group": "cron"
+            },
+            "auto_destroy": true,
+            "disable_machine_autostart": true,
+            "guest": {
+                "cpu_kind": "shared",
+                "cpus": 2,
+                "memory_mb": 4096
+            },
+            "image": "registry.fly.io/gfs:latest",
+            "mounts": [
+                {
+                    "volume": "vol_r1lkyx3gowdy78p4",
+                    "path": "/data/gfs"
+                }
+            ],
+            "restart": {
+                "max_retries": 1,
+                "policy": "no"
+            }
+        }
+    },
+    {
+        "name": "gfs-parse-conus-06z",
+        "app_name": "gfs",
+        "command": "python -m tri.cli.main gfs run --parse_conus=True --cycle=6",
+        "command_timeout": 600,
+        "schedule": "0 16 * * *",
+        "region": "lax",
+        "enabled": true,
+        "config": {
+            "metadata": {
+                "fly_process_group": "cron"
+            },
+            "auto_destroy": true,
+            "disable_machine_autostart": true,
+            "guest": {
+                "cpu_kind": "shared",
+                "cpus": 2,
+                "memory_mb": 4096
+            },
+            "image": "registry.fly.io/gfs:latest",
+            "mounts": [
+                {
+                    "volume": "vol_r1lkyx3gowdy78p4",
+                    "path": "/data/gfs"
+                }
+            ],
+            "restart": {
+                "max_retries": 1,
+                "policy": "no"
+            }
+        }
+    },
+    {
+        "name": "gfs-parse-conus-12z",
+        "app_name": "gfs",
+        "command": "python -m tri.cli.main gfs run --parse_conus=True --cycle=12",
+        "command_timeout": 600,
+        "schedule": "0 22 * * *",
+        "region": "lax",
+        "enabled": true,
+        "config": {
+            "metadata": {
+                "fly_process_group": "cron"
+            },
+            "auto_destroy": true,
+            "disable_machine_autostart": true,
+            "guest": {
+                "cpu_kind": "shared",
+                "cpus": 2,
+                "memory_mb": 4096
+            },
+            "image": "registry.fly.io/gfs:latest",
+            "mounts": [
+                {
+                    "volume": "vol_r1lkyx3gowdy78p4",
+                    "path": "/data/gfs"
+                }
+            ],
+            "restart": {
+                "max_retries": 1,
+                "policy": "no"
+            }
+        }
+    },
+    {
+        "name": "gfs-parse-conus-18z",
+        "app_name": "gfs",
+        "command": "python -m tri.cli.main gfs run --parse_conus=True --cycle=18",
+        "command_timeout": 600,
+        "schedule": "0 4 * * *",
+        "region": "lax",
+        "enabled": true,
+        "config": {
+            "metadata": {
+                "fly_process_group": "cron"
+            },
+            "auto_destroy": true,
+            "disable_machine_autostart": true,
+            "guest": {
+                "cpu_kind": "shared",
+                "cpus": 2,
+                "memory_mb": 4096
+            },
+            "image": "registry.fly.io/gfs:latest",
+            "mounts": [
+                {
+                    "volume": "vol_r1lkyx3gowdy78p4",
+                    "path": "/data/gfs"
+                }
+            ],
+            "restart": {
+                "max_retries": 1,
+                "policy": "no"
+            }
+        }
+    },
+    {
+        "name": "reg-summaries-generate",
+        "app_name": "reg-summaries",
+        "command": "python -m tri.cli.main reg_summaries run",
+        "command_timeout": 7200,
+        "schedule": "0 3 * * *",
+        "enabled": true,
+        "config": {
+            "metadata": {
+                "fly_process_group": "cron"
+            },
+            "auto_destroy": true,
+            "disable_machine_autostart": true,
+            "guest": {
+                "cpu_kind": "shared",
+                "cpus": 2,
+                "memory_mb": 2048
+            },
+            "image": "registry.fly.io/reg-summaries:latest",
+            "restart": {
+                "max_retries": 1,
+                "policy": "no"
+            }
+        }
+    },
+    {
+        "name": "rpat-status-migrate",
+        "app_name": "rpat-status",
+        "command": "alembic -c /app/ingestors/rpat_status/alembic.ini upgrade head",
+        "enabled": false,
+        "config": {
+            "metadata": {
+                "fly_process_group": "cron"
+            },
+            "auto_destroy": true,
+            "disable_machine_autostart": true,
+            "guest": {
+                "cpu_kind": "shared",
+                "cpus": 1,
+                "memory_mb": 512
+            },
+            "image": "registry.fly.io/rpat-status:latest",
+            "restart": {
+                "max_retries": 1,
+                "policy": "no"
+            }
+        }
+    },
+    {
+        "name": "rpat-status-check",
+        "app_name": "rpat-status",
+        "command": "python -m tri.cli.main rpat_status run --status_check=True",
+        "command_timeout": 300,
+        "schedule": "0 8 * * *",
+        "enabled": true,
+        "config": {
+            "metadata": {
+                "fly_process_group": "cron"
+            },
+            "auto_destroy": true,
+            "disable_machine_autostart": true,
+            "guest": {
+                "cpu_kind": "shared",
+                "cpus": 1,
+                "memory_mb": 512
+            },
+            "image": "registry.fly.io/rpat-status:latest",
+            "restart": {
+                "max_retries": 1,
+                "policy": "no"
+            }
+        }
+    },
+    {
+        "name": "gfs-drop-old",
+        "app_name": "gfs",
+        "command": "python -m tri.cli.main gfs run --drop_old=True --days_to_keep=7",
+        "command_timeout": 120,
+        "schedule": "0 2 * * *",
+        "region": "lax",
+        "enabled": true,
+        "config": {
+            "metadata": {
+                "fly_process_group": "cron"
+            },
+            "auto_destroy": true,
+            "disable_machine_autostart": true,
+            "guest": {
+                "cpu_kind": "shared",
+                "cpus": 1,
+                "memory_mb": 512
+            },
+            "image": "registry.fly.io/gfs:latest",
+            "restart": {
+                "max_retries": 1,
+                "policy": "no"
+            }
+        }
+    },
+    {
+        "name": "storm-reports-run",
+        "app_name": "storm-reports",
+        "command": "storm_reports run",
+        "command_timeout": 300,
+        "schedule": "0 6 * * *",
+        "region": "lax",
+        "enabled": true,
+        "config": {
+            "metadata": {
+                "fly_process_group": "cron"
+            },
+            "auto_destroy": true,
+            "disable_machine_autostart": true,
+            "guest": {
+                "cpu_kind": "shared",
+                "cpus": 1,
+                "memory_mb": 512
+            },
+            "image": "registry.fly.io/storm-reports:latest",
+            "restart": {
+                "max_retries": 1,
+                "policy": "no"
+            }
+        }
+    },
+    {
+        "name": "storm-reports-backfill-recent",
+        "app_name": "storm-reports",
+        "command": "storm_reports backfill_recent",
+        "command_timeout": 900,
+        "schedule": "0 7 * * 0",
+        "region": "lax",
+        "enabled": true,
+        "config": {
+            "metadata": {
+                "fly_process_group": "cron"
+            },
+            "auto_destroy": true,
+            "disable_machine_autostart": true,
+            "guest": {
+                "cpu_kind": "shared",
+                "cpus": 1,
+                "memory_mb": 512
+            },
+            "image": "registry.fly.io/storm-reports:latest",
+            "restart": {
+                "max_retries": 1,
+                "policy": "no"
+            }
+        }
+    }
+]
