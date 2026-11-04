@@ -48,9 +48,11 @@ func ProcessJob(ctx context.Context, log *logrus.Logger, store *Store, scheduleI
 
 	// Provision machine to run the job
 	machine, err := client.MachineProvision(ctx, schedule, job)
-	if err != nil && machine != nil {
-		if destroyErr := client.MachineDestroy(ctx, machine); destroyErr != nil {
-			logger.Warnf("failed to destroy machine %s: %s", machine.ID, destroyErr)
+	if err != nil {
+		if machine != nil {
+			if destroyErr := client.MachineDestroy(ctx, machine); destroyErr != nil {
+				logger.Warnf("failed to destroy machine %s: %s", machine.ID, destroyErr)
+			}
 		}
 		return fmt.Errorf("failed to provision machine: %w", err)
 	}

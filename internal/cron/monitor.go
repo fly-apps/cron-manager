@@ -2,13 +2,14 @@ package cron
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"os/exec"
 	"sync"
 	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/superfly/fly-go"
+	"github.com/superfly/fly-go/flaps"
 )
 
 const (
@@ -71,19 +72,17 @@ func evaluateJob(ctx context.Context, logger *logrus.Logger, store *Store, job J
 
 	// Fetch the machine associated with the job
 	machine, err := client.MachineGet(ctx, job.MachineID.String)
-	if err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
-			if exitErr.ExitCode() == 404 {
-				// Machines are queryable up to 48 hours after they are destroyed.
-				// If the cron manager is shutdown or inactive for more than 48 hours, we will not be able to evaluate the result.
-				log.WithError(err).Errorf("failed to get machine %s: %v", job.MachineID.String, err)
-				if err := store.FailJob(ctx, job.ID, -1, "machine destroyed before we could interpret the results"); err != nil {
-					log.WithError(err).Errorf("failed to update job %d status", job.ID)
-				}
-				return nil
-			}
-			log.WithError(err).Errorf("failed to get machine %s: %v", job.MachineID.String, err)
+	if errors.Is(err, flaps.FlapsErrorNotFound) {
+		// Machines are queryable up to 48 hours after they are destroyed.
+		// If the cron manager is shutdown or inactive for more than 48 hours, we will not be able to evaluate the result.
+		log.WithError(err).Errorf("failed to get machine %s: %v", job.MachineID.String, err)
+		if err := store.FailJob(ctx, job.ID, -1, "machine destroyed before we could interpret the results"); err != nil {
+			log.WithError(err).Errorf("failed to update job %d status", job.ID)
 		}
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("failed to get machine %s: %w", job.MachineID.String, err)
 	}
 
 	log.Debugf("Monitoring job")
